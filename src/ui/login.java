@@ -1,9 +1,6 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
- */
 package ui;
 import com.formdev.flatlaf.FlatLightLaf;
+
 
 /**
  *
@@ -16,7 +13,11 @@ public class login extends javax.swing.JFrame {
      */
     public login() {
         initComponents();
+        setSize(850, 600);
         setLocationRelativeTo(null);
+        //jPanel2.setBorder(new RoundedBorder(25, new java.awt.Color(0, 125, 255), 2));
+        //this.setExtendedState(login.MAXIMIZED_BOTH);
+
     }
 
     /**
@@ -29,33 +30,86 @@ public class login extends javax.swing.JFrame {
     private void initComponents() {
 
         jPanel1 = new javax.swing.JPanel();
+        jLabel1 = new javax.swing.JLabel();
+        jPanel2 = new javax.swing.JPanel();
+        jLabel5 = new javax.swing.JLabel();
+        jLabel6 = new javax.swing.JLabel();
+        jSeparator2 = new javax.swing.JSeparator();
+        jLabel7 = new javax.swing.JLabel();
+        txtUsername1 = new javax.swing.JTextField();
+        jLabel8 = new javax.swing.JLabel();
+        txtPassword1 = new javax.swing.JPasswordField();
+        btnLogin1 = new javax.swing.JButton();
+        btnClear1 = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setBackground(new java.awt.Color(255, 255, 255));
+        getContentPane().setLayout(null);
 
-        jPanel1.setBackground(new java.awt.Color(255, 255, 255));
+        jPanel1.setBackground(new java.awt.Color(0, 102, 204));
+        jPanel1.setLayout(null);
 
-        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
-        jPanel1.setLayout(jPanel1Layout);
-        jPanel1Layout.setHorizontalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 927, Short.MAX_VALUE)
-        );
-        jPanel1Layout.setVerticalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 617, Short.MAX_VALUE)
-        );
+        jLabel1.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/login-bg-1.png"))); // NOI18N
+        jPanel1.add(jLabel1);
+        jLabel1.setBounds(0, 0, 300, 590);
 
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
-        getContentPane().setLayout(layout);
-        layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-        );
-        layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-        );
+        getContentPane().add(jPanel1);
+        jPanel1.setBounds(0, 0, 300, 590);
+
+        jPanel2.setBackground(new java.awt.Color(255, 255, 255));
+        jPanel2.setLayout(null);
+
+        jLabel5.setBackground(new java.awt.Color(0, 51, 102));
+        jLabel5.setFont(new java.awt.Font("Microsoft PhagsPa", 1, 27)); // NOI18N
+        jLabel5.setForeground(new java.awt.Color(1, 34, 98));
+        jLabel5.setText("Sampath Food City");
+        jPanel2.add(jLabel5);
+        jLabel5.setBounds(60, 70, 320, 50);
+
+        jLabel6.setFont(new java.awt.Font("Microsoft PhagsPa", 0, 18)); // NOI18N
+        jLabel6.setText("Sales Data Analysis System");
+        jPanel2.add(jLabel6);
+        jLabel6.setBounds(60, 110, 250, 30);
+        jPanel2.add(jSeparator2);
+        jSeparator2.setBounds(60, 150, 350, 20);
+
+        jLabel7.setFont(new java.awt.Font("Microsoft PhagsPa", 0, 17)); // NOI18N
+        jLabel7.setText("Username");
+        jPanel2.add(jLabel7);
+        jLabel7.setBounds(60, 180, 250, 30);
+
+        txtUsername1.setFont(new java.awt.Font("Microsoft YaHei", 0, 14)); // NOI18N
+        txtUsername1.setForeground(new java.awt.Color(51, 51, 51));
+        jPanel2.add(txtUsername1);
+        txtUsername1.setBounds(60, 210, 350, 40);
+
+        jLabel8.setFont(new java.awt.Font("Microsoft PhagsPa", 0, 17)); // NOI18N
+        jLabel8.setText("Password");
+        jPanel2.add(jLabel8);
+        jLabel8.setBounds(60, 260, 250, 30);
+
+        txtPassword1.setFont(new java.awt.Font("Microsoft YaHei", 0, 14)); // NOI18N
+        txtPassword1.setForeground(new java.awt.Color(51, 51, 51));
+        jPanel2.add(txtPassword1);
+        txtPassword1.setBounds(60, 290, 350, 40);
+
+        btnLogin1.setBackground(new java.awt.Color(1, 34, 98));
+        btnLogin1.setFont(new java.awt.Font("Microsoft PhagsPa", 0, 16)); // NOI18N
+        btnLogin1.setForeground(new java.awt.Color(255, 255, 255));
+        btnLogin1.setText("Login");
+        btnLogin1.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        jPanel2.add(btnLogin1);
+        btnLogin1.setBounds(60, 370, 350, 40);
+
+        btnClear1.setFont(new java.awt.Font("Microsoft PhagsPa", 0, 16)); // NOI18N
+        btnClear1.setForeground(new java.awt.Color(0, 51, 102));
+        btnClear1.setText("Clear");
+        btnClear1.setToolTipText("");
+        jPanel2.add(btnClear1);
+        btnClear1.setBounds(60, 420, 350, 40);
+
+        getContentPane().add(jPanel2);
+        jPanel2.setBounds(300, 0, 550, 590);
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
@@ -70,8 +124,11 @@ public class login extends javax.swing.JFrame {
          * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
          */
         try {
-            // Set FlatLaf as the look and feel
-            javax.swing.UIManager.setLookAndFeel(new FlatLightLaf());
+        FlatLightLaf.setup(); // You can change to FlatDarkLaf, etc.
+        // Optional: customize a few UI properties
+            javax.swing.UIManager.put("Button.arc", 20);
+            javax.swing.UIManager.put("Component.focusWidth", 1);
+            javax.swing.UIManager.put("TextComponent.arc", 15);
         } catch (Exception ex) {
             System.err.println("Failed to initialize FlatLaf");
         }
@@ -85,6 +142,17 @@ public class login extends javax.swing.JFrame {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton btnClear1;
+    private javax.swing.JButton btnLogin1;
+    private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel5;
+    private javax.swing.JLabel jLabel6;
+    private javax.swing.JLabel jLabel7;
+    private javax.swing.JLabel jLabel8;
     private javax.swing.JPanel jPanel1;
+    private javax.swing.JPanel jPanel2;
+    private javax.swing.JSeparator jSeparator2;
+    private javax.swing.JPasswordField txtPassword1;
+    private javax.swing.JTextField txtUsername1;
     // End of variables declaration//GEN-END:variables
 }

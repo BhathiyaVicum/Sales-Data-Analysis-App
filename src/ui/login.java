@@ -36,11 +36,11 @@ public class login extends javax.swing.JFrame {
         jLabel6 = new javax.swing.JLabel();
         jSeparator2 = new javax.swing.JSeparator();
         jLabel7 = new javax.swing.JLabel();
-        txtUsername1 = new javax.swing.JTextField();
+        txtUsername = new javax.swing.JTextField();
         jLabel8 = new javax.swing.JLabel();
-        txtPassword1 = new javax.swing.JPasswordField();
-        btnLogin1 = new javax.swing.JButton();
-        btnClear1 = new javax.swing.JButton();
+        txtPassword = new javax.swing.JPasswordField();
+        btnLogin = new javax.swing.JButton();
+        btnClear = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setBackground(new java.awt.Color(255, 255, 255));
@@ -78,41 +78,50 @@ public class login extends javax.swing.JFrame {
         jPanel2.add(jLabel7);
         jLabel7.setBounds(60, 180, 250, 30);
 
-        txtUsername1.setFont(new java.awt.Font("Microsoft YaHei", 0, 14)); // NOI18N
-        txtUsername1.setForeground(new java.awt.Color(51, 51, 51));
-        jPanel2.add(txtUsername1);
-        txtUsername1.setBounds(60, 210, 350, 40);
+        txtUsername.setFont(new java.awt.Font("Microsoft YaHei", 0, 14)); // NOI18N
+        txtUsername.setForeground(new java.awt.Color(51, 51, 51));
+        jPanel2.add(txtUsername);
+        txtUsername.setBounds(60, 210, 350, 40);
 
         jLabel8.setFont(new java.awt.Font("Microsoft PhagsPa", 0, 17)); // NOI18N
         jLabel8.setText("Password");
         jPanel2.add(jLabel8);
         jLabel8.setBounds(60, 260, 250, 30);
 
-        txtPassword1.setFont(new java.awt.Font("Microsoft YaHei", 0, 14)); // NOI18N
-        txtPassword1.setForeground(new java.awt.Color(51, 51, 51));
-        jPanel2.add(txtPassword1);
-        txtPassword1.setBounds(60, 290, 350, 40);
+        txtPassword.setFont(new java.awt.Font("Microsoft YaHei", 0, 14)); // NOI18N
+        txtPassword.setForeground(new java.awt.Color(51, 51, 51));
+        jPanel2.add(txtPassword);
+        txtPassword.setBounds(60, 290, 350, 40);
 
-        btnLogin1.setBackground(new java.awt.Color(1, 34, 98));
-        btnLogin1.setFont(new java.awt.Font("Microsoft PhagsPa", 0, 16)); // NOI18N
-        btnLogin1.setForeground(new java.awt.Color(255, 255, 255));
-        btnLogin1.setText("Login");
-        btnLogin1.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
-        jPanel2.add(btnLogin1);
-        btnLogin1.setBounds(60, 370, 350, 40);
+        btnLogin.setBackground(new java.awt.Color(1, 34, 98));
+        btnLogin.setFont(new java.awt.Font("Microsoft PhagsPa", 0, 16)); // NOI18N
+        btnLogin.setForeground(new java.awt.Color(255, 255, 255));
+        btnLogin.setText("Login");
+        btnLogin.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        btnLogin.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnLoginActionPerformed(evt);
+            }
+        });
+        jPanel2.add(btnLogin);
+        btnLogin.setBounds(60, 370, 350, 40);
 
-        btnClear1.setFont(new java.awt.Font("Microsoft PhagsPa", 0, 16)); // NOI18N
-        btnClear1.setForeground(new java.awt.Color(0, 51, 102));
-        btnClear1.setText("Clear");
-        btnClear1.setToolTipText("");
-        jPanel2.add(btnClear1);
-        btnClear1.setBounds(60, 420, 350, 40);
+        btnClear.setFont(new java.awt.Font("Microsoft PhagsPa", 0, 16)); // NOI18N
+        btnClear.setForeground(new java.awt.Color(0, 51, 102));
+        btnClear.setText("Clear");
+        btnClear.setToolTipText("");
+        jPanel2.add(btnClear);
+        btnClear.setBounds(60, 420, 350, 40);
 
         getContentPane().add(jPanel2);
         jPanel2.setBounds(300, 0, 550, 590);
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
+
+    private void btnLoginActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnLoginActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_btnLoginActionPerformed
 
     /**
      * @param args the command line arguments
@@ -142,8 +151,8 @@ public class login extends javax.swing.JFrame {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton btnClear1;
-    private javax.swing.JButton btnLogin1;
+    private javax.swing.JButton btnClear;
+    private javax.swing.JButton btnLogin;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel5;
     private javax.swing.JLabel jLabel6;
@@ -152,7 +161,7 @@ public class login extends javax.swing.JFrame {
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
     private javax.swing.JSeparator jSeparator2;
-    private javax.swing.JPasswordField txtPassword1;
-    private javax.swing.JTextField txtUsername1;
+    private javax.swing.JPasswordField txtPassword;
+    private javax.swing.JTextField txtUsername;
     // End of variables declaration//GEN-END:variables
 }

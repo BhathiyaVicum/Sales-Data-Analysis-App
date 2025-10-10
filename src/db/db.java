@@ -11,12 +11,12 @@ public class db {
     
     public static void main(String[] args) {
         
-        String url = "jdbc:mysql://localhost:3306/testdb"; // replace 'testdb' with your DB name
-        String user = "root";  // phpMyAdmin default username
-        String password = "";  // leave blank if no password (XAMPP default)
+        String url = "jdbc:mysql://localhost:3306/sampath_shop_db";
+        String user = "root";
+        String password = "";
 
         try {
-            // Load MySQL JDBC Driver
+            
             Class.forName("com.mysql.cj.jdbc.Driver");
 
             // Establish connection

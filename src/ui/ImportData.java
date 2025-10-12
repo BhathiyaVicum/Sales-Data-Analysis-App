@@ -9,6 +9,14 @@ import java.util.List;
 import javax.swing.JFileChooser;
 import javax.swing.table.DefaultTableModel;
 import data.LoadData;
+import db.db;
+import java.awt.print.PrinterException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.text.MessageFormat;
+import javax.swing.JOptionPane;
+import javax.swing.JTable;
 
 public class ImportData extends javax.swing.JPanel {
 
@@ -55,10 +63,58 @@ public class ImportData extends javax.swing.JPanel {
         
     }
 
-    public void uploadData() {
+    public void saveData() {
         
+        int confirm = JOptionPane.showConfirmDialog(null,"Are you sure you want to upload this data to the database?","Confirm Upload",JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+
+        if (confirm != JOptionPane.YES_OPTION) {
+            JOptionPane.showMessageDialog(null, "Upload canceled.");
+            return;
+        }
         
-        
+        try {
+            Connection con = db.getConnection();
+            con.setAutoCommit(false);
+            String query = "INSERT INTO transaction (tra_id, cus_id, pro_id, pro_name, qty, per_unit, date, total_price, region) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            PreparedStatement pst = con.prepareStatement(query);
+
+            DefaultTableModel model = (DefaultTableModel) TransactionTbl.getModel();
+            double total = 0;
+
+            for (int i = 0; i < model.getRowCount(); i++) {
+                int tra_id = Integer.parseInt(model.getValueAt(i, 0).toString());
+                int c_id = Integer.parseInt(model.getValueAt(i, 1).toString());
+                int p_id = Integer.parseInt(model.getValueAt(i, 2).toString());
+                String p_name = model.getValueAt(i, 3).toString();
+                int quantity = Integer.parseInt(model.getValueAt(i, 4).toString());
+                double p_unit = Double.parseDouble(model.getValueAt(i, 5).toString());
+                String date = model.getValueAt(i, 6).toString();
+                double price = Double.parseDouble(model.getValueAt(i, 7).toString());
+                String region = model.getValueAt(i, 8).toString();
+
+                total += price;
+
+                pst.setInt(1, tra_id);
+                pst.setInt(2, c_id);
+                pst.setInt(3, p_id);
+                pst.setString(4, p_name);
+                pst.setInt(5, quantity);
+                pst.setDouble(6, p_unit);
+                pst.setString(7, date);
+                pst.setDouble(8, price);
+                pst.setString(9, region);
+
+                pst.addBatch();
+            }
+
+            pst.executeBatch();
+            con.commit();
+
+            JOptionPane.showMessageDialog(null, "Data saved successfully!");
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(null, "Database Error: " + e.getMessage());
+        }
     }
     
     /**
@@ -77,6 +133,7 @@ public class ImportData extends javax.swing.JPanel {
         syncBtn = new javax.swing.JButton();
         jScrollPane1 = new javax.swing.JScrollPane();
         TransactionTbl = new javax.swing.JTable();
+        printBtn = new javax.swing.JButton();
 
         jPanel1.setBackground(new java.awt.Color(255, 255, 255));
 
@@ -133,6 +190,15 @@ public class ImportData extends javax.swing.JPanel {
             TransactionTbl.getColumnModel().getColumn(6).setResizable(false);
         }
 
+        printBtn.setBackground(new java.awt.Color(215, 223, 255));
+        printBtn.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
+        printBtn.setText("Print");
+        printBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                printBtnActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
@@ -143,7 +209,9 @@ public class ImportData extends javax.swing.JPanel {
                     .addGroup(jPanel1Layout.createSequentialGroup()
                         .addComponent(uploadBtn, javax.swing.GroupLayout.PREFERRED_SIZE, 165, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(syncBtn, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addComponent(syncBtn, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(printBtn, javax.swing.GroupLayout.PREFERRED_SIZE, 84, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addComponent(jSeparator1, javax.swing.GroupLayout.DEFAULT_SIZE, 822, Short.MAX_VALUE)
                     .addComponent(jLabel5)
                     .addComponent(jScrollPane1))
@@ -156,13 +224,13 @@ public class ImportData extends javax.swing.JPanel {
                 .addComponent(jLabel5)
                 .addGap(12, 12, 12)
                 .addComponent(jSeparator1, javax.swing.GroupLayout.PREFERRED_SIZE, 14, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(0, 0, 0)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(uploadBtn, javax.swing.GroupLayout.PREFERRED_SIZE, 43, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(syncBtn, javax.swing.GroupLayout.PREFERRED_SIZE, 43, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(12, 12, 12)
+                    .addComponent(syncBtn, javax.swing.GroupLayout.PREFERRED_SIZE, 34, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(uploadBtn, javax.swing.GroupLayout.PREFERRED_SIZE, 34, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(printBtn, javax.swing.GroupLayout.PREFERRED_SIZE, 34, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(13, 13, 13)
                 .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 476, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(28, Short.MAX_VALUE))
+                .addContainerGap(36, Short.MAX_VALUE))
         );
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
@@ -183,8 +251,24 @@ public class ImportData extends javax.swing.JPanel {
     }//GEN-LAST:event_uploadBtnActionPerformed
 
     private void syncBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_syncBtnActionPerformed
-        // TODO add your handling code here:
+        saveData();
     }//GEN-LAST:event_syncBtnActionPerformed
+
+    private void printBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_printBtnActionPerformed
+        
+        try {
+            boolean complete = TransactionTbl.print(JTable.PrintMode.FIT_WIDTH, new MessageFormat("Datas"), new MessageFormat("Page {0}"));
+            
+            if (complete) {
+                JOptionPane.showMessageDialog(null, "Complete");
+            } else {
+                JOptionPane.showMessageDialog(null, "Not Complete");
+            }
+        } catch (PrinterException e){
+            JOptionPane.showMessageDialog(null, 0);
+        }
+        
+    }//GEN-LAST:event_printBtnActionPerformed
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
@@ -193,6 +277,7 @@ public class ImportData extends javax.swing.JPanel {
     private javax.swing.JPanel jPanel1;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JSeparator jSeparator1;
+    private javax.swing.JButton printBtn;
     private javax.swing.JButton syncBtn;
     private javax.swing.JButton uploadBtn;
     // End of variables declaration//GEN-END:variables

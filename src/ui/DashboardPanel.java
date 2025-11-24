@@ -1,5 +1,9 @@
 package ui;
 
+import db.db;
+import java.awt.print.PrinterException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 /*
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JPanel.java to edit this template
@@ -12,8 +16,77 @@ public class DashboardPanel extends javax.swing.JPanel {
      */
     public DashboardPanel() {
         initComponents();
+        totalTransactions();
+        totalSales();
+        topProduct();
+    }
+    
+    public void totalTransactions() {
+        
+        Connection con = null;
+        PreparedStatement pst = null;
+        java.sql.ResultSet rs = null;
+
+        try {
+            con = db.getConnection();
+            String query = "SELECT COUNT(*) AS total FROM transactions";
+            pst = con.prepareStatement(query);
+            rs = pst.executeQuery();
+
+            if (rs.next()) {
+                int total = rs.getInt("total");
+                total_transaction_lbl.setText(String.valueOf(total));
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    
+    public void totalSales() {
+        
+        Connection con = null;
+        PreparedStatement pst = null;
+        java.sql.ResultSet rs = null;
+
+        try {
+            con = db.getConnection();
+            String query = "SELECT SUM(total_price) AS total FROM transactions;";
+            pst = con.prepareStatement(query);
+            rs = pst.executeQuery();
+
+            if (rs.next()) {
+                float total = rs.getFloat("total");
+                total_sales_lbl.setText("Rs. " + total);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
+    public void topProduct() {
+        
+        Connection con = null;
+        PreparedStatement pst = null;
+        java.sql.ResultSet rs = null;
+
+        try {
+            con = db.getConnection();
+            String query = "SELECT pro_name, SUM(qty) AS total_sold FROM transactions ORDER BY total_sold DESC LIMIT 1";
+            pst = con.prepareStatement(query);
+            rs = pst.executeQuery();
+
+            if (rs.next()) {
+                String productName = rs.getString("pro_name");
+                top_product_lbl.setText(productName);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -32,17 +105,17 @@ public class DashboardPanel extends javax.swing.JPanel {
         jSeparator1 = new javax.swing.JSeparator();
         jPanel3 = new javax.swing.JPanel();
         jPanel1 = new javax.swing.JPanel();
-        jLabel2 = new javax.swing.JLabel();
+        total_sales_lbl = new javax.swing.JLabel();
         jLabel1 = new javax.swing.JLabel();
         jLabel3 = new javax.swing.JLabel();
         jPanel9 = new javax.swing.JPanel();
         jPanel10 = new javax.swing.JPanel();
-        jLabel10 = new javax.swing.JLabel();
+        total_transaction_lbl = new javax.swing.JLabel();
         jLabel11 = new javax.swing.JLabel();
         jLabel4 = new javax.swing.JLabel();
         jPanel11 = new javax.swing.JPanel();
         jPanel12 = new javax.swing.JPanel();
-        jLabel12 = new javax.swing.JLabel();
+        top_product_lbl = new javax.swing.JLabel();
         jLabel13 = new javax.swing.JLabel();
         jLabel6 = new javax.swing.JLabel();
 
@@ -116,8 +189,8 @@ public class DashboardPanel extends javax.swing.JPanel {
             .addGap(0, 9, Short.MAX_VALUE)
         );
 
-        jLabel2.setFont(new java.awt.Font("Microsoft Sans Serif", 1, 20)); // NOI18N
-        jLabel2.setText("Rs. 140,000.00");
+        total_sales_lbl.setFont(new java.awt.Font("Microsoft Sans Serif", 1, 20)); // NOI18N
+        total_sales_lbl.setText("Rs. 140,000.00");
 
         jLabel1.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
         jLabel1.setText("Total Sales");
@@ -135,7 +208,7 @@ public class DashboardPanel extends javax.swing.JPanel {
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 147, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 186, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(total_sales_lbl, javax.swing.GroupLayout.PREFERRED_SIZE, 186, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addGap(22, 22, 22))
         );
         jPanel3Layout.setVerticalGroup(
@@ -147,7 +220,7 @@ public class DashboardPanel extends javax.swing.JPanel {
                     .addGroup(jPanel3Layout.createSequentialGroup()
                         .addComponent(jLabel1)
                         .addGap(3, 3, 3)
-                        .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addComponent(total_sales_lbl, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addComponent(jLabel3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
@@ -168,8 +241,8 @@ public class DashboardPanel extends javax.swing.JPanel {
             .addGap(0, 9, Short.MAX_VALUE)
         );
 
-        jLabel10.setFont(new java.awt.Font("Microsoft Sans Serif", 1, 20)); // NOI18N
-        jLabel10.setText("1,894");
+        total_transaction_lbl.setFont(new java.awt.Font("Microsoft Sans Serif", 1, 20)); // NOI18N
+        total_transaction_lbl.setText("1,894");
 
         jLabel11.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
         jLabel11.setText("Total Transactions");
@@ -186,7 +259,7 @@ public class DashboardPanel extends javax.swing.JPanel {
                 .addComponent(jLabel4)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanel9Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jLabel10, javax.swing.GroupLayout.PREFERRED_SIZE, 186, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(total_transaction_lbl, javax.swing.GroupLayout.PREFERRED_SIZE, 186, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel11, javax.swing.GroupLayout.PREFERRED_SIZE, 168, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addGap(22, 22, 22))
         );
@@ -199,7 +272,7 @@ public class DashboardPanel extends javax.swing.JPanel {
                     .addGroup(jPanel9Layout.createSequentialGroup()
                         .addComponent(jLabel11)
                         .addGap(3, 3, 3)
-                        .addComponent(jLabel10, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(total_transaction_lbl, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(0, 0, Short.MAX_VALUE))
                     .addGroup(jPanel9Layout.createSequentialGroup()
                         .addComponent(jLabel4, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
@@ -222,8 +295,8 @@ public class DashboardPanel extends javax.swing.JPanel {
             .addGap(0, 9, Short.MAX_VALUE)
         );
 
-        jLabel12.setFont(new java.awt.Font("Microsoft Sans Serif", 1, 20)); // NOI18N
-        jLabel12.setText("Organic Coffee");
+        top_product_lbl.setFont(new java.awt.Font("Microsoft Sans Serif", 1, 20)); // NOI18N
+        top_product_lbl.setText("Organic Coffee");
 
         jLabel13.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
         jLabel13.setText("Top Product");
@@ -240,7 +313,7 @@ public class DashboardPanel extends javax.swing.JPanel {
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addGroup(jPanel11Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(jLabel13, javax.swing.GroupLayout.PREFERRED_SIZE, 147, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel12, javax.swing.GroupLayout.PREFERRED_SIZE, 186, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(top_product_lbl, javax.swing.GroupLayout.PREFERRED_SIZE, 186, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addGap(22, 22, 22))
             .addComponent(jPanel12, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
         );
@@ -253,7 +326,7 @@ public class DashboardPanel extends javax.swing.JPanel {
                     .addGroup(jPanel11Layout.createSequentialGroup()
                         .addComponent(jLabel13)
                         .addGap(3, 3, 3)
-                        .addComponent(jLabel12, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addComponent(top_product_lbl, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addComponent(jLabel6))
                 .addGap(0, 0, Short.MAX_VALUE))
         );
@@ -310,11 +383,8 @@ public class DashboardPanel extends javax.swing.JPanel {
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel PanelDashboard;
     private javax.swing.JLabel jLabel1;
-    private javax.swing.JLabel jLabel10;
     private javax.swing.JLabel jLabel11;
-    private javax.swing.JLabel jLabel12;
     private javax.swing.JLabel jLabel13;
-    private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel5;
@@ -330,5 +400,8 @@ public class DashboardPanel extends javax.swing.JPanel {
     private javax.swing.JPanel jPanel8;
     private javax.swing.JPanel jPanel9;
     private javax.swing.JSeparator jSeparator1;
+    private javax.swing.JLabel top_product_lbl;
+    private javax.swing.JLabel total_sales_lbl;
+    private javax.swing.JLabel total_transaction_lbl;
     // End of variables declaration//GEN-END:variables
 }

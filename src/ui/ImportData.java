@@ -75,7 +75,7 @@ public class ImportData extends javax.swing.JPanel {
         try {
             Connection con = db.getConnection();
             con.setAutoCommit(false);
-            String query = "INSERT INTO transaction (tra_id, cus_id, pro_id, pro_name, qty, per_unit, date, total_price, region) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            String query = "INSERT INTO transactions (tra_id, cus_id, pro_id, pro_name, qty, per_unit, date, total_price, region) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
             PreparedStatement pst = con.prepareStatement(query);
 
             DefaultTableModel model = (DefaultTableModel) TransactionTbl.getModel();
@@ -224,7 +224,7 @@ public class ImportData extends javax.swing.JPanel {
                 .addComponent(jLabel5)
                 .addGap(12, 12, 12)
                 .addComponent(jSeparator1, javax.swing.GroupLayout.PREFERRED_SIZE, 14, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(syncBtn, javax.swing.GroupLayout.PREFERRED_SIZE, 34, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(uploadBtn, javax.swing.GroupLayout.PREFERRED_SIZE, 34, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(printBtn, javax.swing.GroupLayout.PREFERRED_SIZE, 34, javax.swing.GroupLayout.PREFERRED_SIZE))

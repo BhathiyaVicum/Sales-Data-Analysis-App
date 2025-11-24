@@ -124,7 +124,7 @@
       <Layout>
         <DimensionLayout dim="0">
           <Group type="103" groupAlignment="0" attributes="0">
-              <Group type="102" alignment="0" attributes="0">
+              <Group type="102" attributes="0">
                   <EmptySpace min="-2" pref="25" max="-2" attributes="0"/>
                   <Group type="103" groupAlignment="0" attributes="0">
                       <Component id="jLabel5" alignment="0" min="-2" pref="320" max="-2" attributes="0"/>
@@ -205,7 +205,7 @@
                       <EmptySpace max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="0" attributes="0">
                           <Component id="jLabel1" min="-2" pref="147" max="-2" attributes="0"/>
-                          <Component id="jLabel2" min="-2" pref="186" max="-2" attributes="0"/>
+                          <Component id="total_sales_lbl" min="-2" pref="186" max="-2" attributes="0"/>
                       </Group>
                       <EmptySpace min="-2" pref="22" max="-2" attributes="0"/>
                   </Group>
@@ -220,7 +220,7 @@
                           <Group type="102" attributes="0">
                               <Component id="jLabel1" min="-2" max="-2" attributes="0"/>
                               <EmptySpace min="-2" pref="3" max="-2" attributes="0"/>
-                              <Component id="jLabel2" min="-2" pref="30" max="-2" attributes="0"/>
+                              <Component id="total_sales_lbl" min="-2" pref="30" max="-2" attributes="0"/>
                           </Group>
                           <Component id="jLabel3" max="32767" attributes="0"/>
                       </Group>
@@ -250,7 +250,7 @@
                 </DimensionLayout>
               </Layout>
             </Container>
-            <Component class="javax.swing.JLabel" name="jLabel2">
+            <Component class="javax.swing.JLabel" name="total_sales_lbl">
               <Properties>
                 <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
                   <Font name="Microsoft Sans Serif" size="20" style="1"/>
@@ -298,7 +298,7 @@
                       <Component id="jLabel4" min="-2" max="-2" attributes="0"/>
                       <EmptySpace max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="0" attributes="0">
-                          <Component id="jLabel10" min="-2" pref="186" max="-2" attributes="0"/>
+                          <Component id="total_transaction_lbl" min="-2" pref="186" max="-2" attributes="0"/>
                           <Component id="jLabel11" min="-2" pref="168" max="-2" attributes="0"/>
                       </Group>
                       <EmptySpace min="-2" pref="22" max="-2" attributes="0"/>
@@ -314,7 +314,7 @@
                           <Group type="102" attributes="0">
                               <Component id="jLabel11" min="-2" max="-2" attributes="0"/>
                               <EmptySpace min="-2" pref="3" max="-2" attributes="0"/>
-                              <Component id="jLabel10" min="-2" pref="30" max="-2" attributes="0"/>
+                              <Component id="total_transaction_lbl" min="-2" pref="30" max="-2" attributes="0"/>
                               <EmptySpace min="0" pref="0" max="32767" attributes="0"/>
                           </Group>
                           <Group type="102" attributes="0">
@@ -347,7 +347,7 @@
                 </DimensionLayout>
               </Layout>
             </Container>
-            <Component class="javax.swing.JLabel" name="jLabel10">
+            <Component class="javax.swing.JLabel" name="total_transaction_lbl">
               <Properties>
                 <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
                   <Font name="Microsoft Sans Serif" size="20" style="1"/>
@@ -395,7 +395,7 @@
                       <EmptySpace max="32767" attributes="0"/>
                       <Group type="103" groupAlignment="0" attributes="0">
                           <Component id="jLabel13" alignment="0" min="-2" pref="147" max="-2" attributes="0"/>
-                          <Component id="jLabel12" alignment="0" min="-2" pref="186" max="-2" attributes="0"/>
+                          <Component id="top_product_lbl" alignment="0" min="-2" pref="186" max="-2" attributes="0"/>
                       </Group>
                       <EmptySpace min="-2" pref="22" max="-2" attributes="0"/>
                   </Group>
@@ -411,7 +411,7 @@
                           <Group type="102" attributes="0">
                               <Component id="jLabel13" min="-2" max="-2" attributes="0"/>
                               <EmptySpace min="-2" pref="3" max="-2" attributes="0"/>
-                              <Component id="jLabel12" min="-2" pref="30" max="-2" attributes="0"/>
+                              <Component id="top_product_lbl" min="-2" pref="30" max="-2" attributes="0"/>
                           </Group>
                           <Component id="jLabel6" min="-2" max="-2" attributes="0"/>
                       </Group>
@@ -441,7 +441,7 @@
                 </DimensionLayout>
               </Layout>
             </Container>
-            <Component class="javax.swing.JLabel" name="jLabel12">
+            <Component class="javax.swing.JLabel" name="top_product_lbl">
               <Properties>
                 <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
                   <Font name="Microsoft Sans Serif" size="20" style="1"/>

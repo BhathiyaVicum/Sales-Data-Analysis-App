@@ -32,6 +32,13 @@ public class AdminDashboard extends javax.swing.JFrame {
         logoutBtn = new javax.swing.JButton();
         jLabel1 = new javax.swing.JLabel();
         jLabel2 = new javax.swing.JLabel();
+        jButton4 = new javax.swing.JButton();
+        jButton5 = new javax.swing.JButton();
+        jButton6 = new javax.swing.JButton();
+        regionalSalesBtn = new javax.swing.JButton();
+        jLabel3 = new javax.swing.JLabel();
+        jSeparator1 = new javax.swing.JSeparator();
+        jSeparator2 = new javax.swing.JSeparator();
         PanelDashboard = new javax.swing.JPanel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
@@ -39,17 +46,17 @@ public class AdminDashboard extends javax.swing.JFrame {
 
         jPanel1.setBackground(new java.awt.Color(13, 42, 171));
 
-        jButton1.setBackground(new java.awt.Color(255, 255, 255));
+        jButton1.setBackground(new java.awt.Color(241, 241, 255));
         jButton1.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
         jButton1.setForeground(new java.awt.Color(13, 42, 171));
-        jButton1.setText("Reports");
+        jButton1.setText("User Management");
         jButton1.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jButton1ActionPerformed(evt);
             }
         });
 
-        dashboardBtn.setBackground(new java.awt.Color(255, 255, 255));
+        dashboardBtn.setBackground(new java.awt.Color(241, 241, 255));
         dashboardBtn.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
         dashboardBtn.setForeground(new java.awt.Color(13, 42, 171));
         dashboardBtn.setText("Dashboard");
@@ -59,22 +66,22 @@ public class AdminDashboard extends javax.swing.JFrame {
             }
         });
 
-        jButton3.setBackground(new java.awt.Color(255, 255, 255));
+        jButton3.setBackground(new java.awt.Color(241, 241, 255));
         jButton3.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
         jButton3.setForeground(new java.awt.Color(13, 42, 171));
-        jButton3.setText("Analytics");
+        jButton3.setText("Sales Analysis");
 
-        importPageBtn.setBackground(new java.awt.Color(255, 255, 255));
+        importPageBtn.setBackground(new java.awt.Color(241, 241, 255));
         importPageBtn.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
         importPageBtn.setForeground(new java.awt.Color(13, 42, 171));
-        importPageBtn.setText("Data Import");
+        importPageBtn.setText("Data Management");
         importPageBtn.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 importPageBtnActionPerformed(evt);
             }
         });
 
-        logoutBtn.setBackground(new java.awt.Color(215, 223, 255));
+        logoutBtn.setBackground(new java.awt.Color(241, 241, 255));
         logoutBtn.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
         logoutBtn.setForeground(new java.awt.Color(13, 42, 171));
         logoutBtn.setText("Logout");
@@ -94,12 +101,44 @@ public class AdminDashboard extends javax.swing.JFrame {
         jLabel2.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         jLabel2.setText("Food City");
 
+        jButton4.setBackground(new java.awt.Color(241, 241, 255));
+        jButton4.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
+        jButton4.setForeground(new java.awt.Color(13, 42, 171));
+        jButton4.setText("Best Sellers");
+
+        jButton5.setBackground(new java.awt.Color(241, 241, 255));
+        jButton5.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
+        jButton5.setForeground(new java.awt.Color(13, 42, 171));
+        jButton5.setText("Product Trends");
+
+        jButton6.setBackground(new java.awt.Color(241, 241, 255));
+        jButton6.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
+        jButton6.setForeground(new java.awt.Color(13, 42, 171));
+        jButton6.setText("Customer Behavior");
+
+        regionalSalesBtn.setBackground(new java.awt.Color(241, 241, 255));
+        regionalSalesBtn.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
+        regionalSalesBtn.setForeground(new java.awt.Color(13, 42, 171));
+        regionalSalesBtn.setText("Regional Sales");
+        regionalSalesBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                regionalSalesBtnActionPerformed(evt);
+            }
+        });
+
+        jLabel3.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 18)); // NOI18N
+        jLabel3.setForeground(new java.awt.Color(255, 255, 255));
+        jLabel3.setText("Analysis");
+
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel1Layout.createSequentialGroup()
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addGap(52, 52, 52)
+                        .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 170, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(jPanel1Layout.createSequentialGroup()
                         .addGap(22, 22, 22)
                         .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
@@ -108,10 +147,16 @@ public class AdminDashboard extends javax.swing.JFrame {
                             .addComponent(jButton3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                             .addComponent(dashboardBtn, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                             .addComponent(jButton1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(jLabel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
-                    .addGroup(jPanel1Layout.createSequentialGroup()
-                        .addGap(52, 52, 52)
-                        .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 170, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                            .addComponent(jLabel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jButton4, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jButton5, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jButton6, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(regionalSalesBtn, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addGroup(jPanel1Layout.createSequentialGroup()
+                                .addComponent(jLabel3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(jSeparator1, javax.swing.GroupLayout.PREFERRED_SIZE, 139, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(jSeparator2))))
                 .addContainerGap(22, Short.MAX_VALUE))
         );
         jPanel1Layout.setVerticalGroup(
@@ -124,8 +169,22 @@ public class AdminDashboard extends javax.swing.JFrame {
                 .addGap(18, 18, 18)
                 .addComponent(dashboardBtn, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(jLabel3, javax.swing.GroupLayout.PREFERRED_SIZE, 26, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jSeparator1, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(jButton3, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jButton4, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jButton5, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jButton6, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(regionalSalesBtn, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(jSeparator2, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(5, 5, 5)
                 .addComponent(jButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(importPageBtn, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -166,8 +225,10 @@ public class AdminDashboard extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void dashboardBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_dashboardBtnActionPerformed
+        
         DashboardPanel pro = new DashboardPanel();
         jpload.jPanelLoader(PanelDashboard, pro);
+        
     }//GEN-LAST:event_dashboardBtnActionPerformed
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
@@ -194,6 +255,13 @@ public class AdminDashboard extends javax.swing.JFrame {
         }
         
     }//GEN-LAST:event_logoutBtnActionPerformed
+
+    private void regionalSalesBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_regionalSalesBtnActionPerformed
+        
+        RegionalSales pro = new RegionalSales();
+        jpload.jPanelLoader(PanelDashboard, pro);
+        
+    }//GEN-LAST:event_regionalSalesBtnActionPerformed
 
     /**
      * @param args the command line arguments
@@ -223,9 +291,16 @@ public class AdminDashboard extends javax.swing.JFrame {
     private javax.swing.JButton importPageBtn;
     private javax.swing.JButton jButton1;
     private javax.swing.JButton jButton3;
+    private javax.swing.JButton jButton4;
+    private javax.swing.JButton jButton5;
+    private javax.swing.JButton jButton6;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
+    private javax.swing.JLabel jLabel3;
     private javax.swing.JPanel jPanel1;
+    private javax.swing.JSeparator jSeparator1;
+    private javax.swing.JSeparator jSeparator2;
     private javax.swing.JButton logoutBtn;
+    private javax.swing.JButton regionalSalesBtn;
     // End of variables declaration//GEN-END:variables
 }

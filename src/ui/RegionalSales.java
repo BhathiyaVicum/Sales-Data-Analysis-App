@@ -16,6 +16,18 @@ import org.jfree.data.general.DefaultPieDataset;
 import java.util.HashMap;
 import java.util.Map;
 import java.sql.ResultSet;
+import javax.swing.JOptionPane;
+import com.toedter.calendar.JDateChooser;
+import java.awt.Desktop;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import javax.swing.JFileChooser;
+import javax.swing.table.DefaultTableModel;
+import java.nio.file.Files;
+import org.xhtmlrenderer.pdf.ITextRenderer;
 
 /**
  *
@@ -34,8 +46,10 @@ public class RegionalSales extends javax.swing.JPanel {
         avgOrders();
         createBarChart();
         createPieChart();
+        loadTable();
     }
 
+    //  Top sales main card
     public void totalSales() {
 
         Connection con = null;
@@ -58,6 +72,7 @@ public class RegionalSales extends javax.swing.JPanel {
         }
     }
 
+    //  Average orders main card
     public void avgOrders() {
 
         Connection con = null;
@@ -84,6 +99,7 @@ public class RegionalSales extends javax.swing.JPanel {
         }
     }
 
+    //  Top region main card
     public void topRegion() {
 
         Connection con = null;
@@ -111,6 +127,7 @@ public class RegionalSales extends javax.swing.JPanel {
         }
     }
 
+    //  Total region main card
     public void totalRegions() {
 
         Connection con = null;
@@ -132,6 +149,262 @@ public class RegionalSales extends javax.swing.JPanel {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    //  Data analysis method (When date choosen and refresh button click)
+    public void dataAnalysis() {
+
+        Date fromSelectedDate = dateFromChooser.getDate();
+        Date toSelectedDate = dateToChooser.getDate();
+
+        // Check if dates are selected
+        if (fromSelectedDate == null || toSelectedDate == null) {
+            JOptionPane.showMessageDialog(null, "Please choose dates for analysis.");
+            return;
+        }
+
+        SimpleDateFormat dbDateFormat = new SimpleDateFormat("MM/dd/yyyy");
+        String fromDate = dbDateFormat.format(fromSelectedDate);
+        String toDate = dbDateFormat.format(toSelectedDate);
+
+        System.out.println("From Date: " + fromDate);
+        System.out.println("To Date: " + toDate);
+
+        try {
+            updatePieChart(fromDate, toDate);
+            updateBarChart(fromDate, toDate);
+            updateSidePanel(fromDate, toDate);
+            updateTable(fromDate, toDate);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    //  Method to update the side panel according to selected date range    
+    public void updateSidePanel(String fromDate, String toDate) {
+
+        Connection con = null;
+        PreparedStatement pst = null;
+        java.sql.ResultSet rs = null;
+
+        try {
+
+            con = db.getConnection();
+
+            String query = "SELECT region, pro_name, SUM(total_price) as total_sales "
+                    + "FROM transactions "
+                    + "WHERE STR_TO_DATE(date, '%m/%d/%Y') BETWEEN STR_TO_DATE(?, '%m/%d/%Y') "
+                    + "AND STR_TO_DATE(?, '%m/%d/%Y') "
+                    + "GROUP BY region "
+                    + "ORDER BY total_sales DESC "
+                    + "LIMIT 1";
+
+            pst = con.prepareStatement(query);
+            pst.setString(1, fromDate);
+            pst.setString(2, toDate);
+
+            rs = pst.executeQuery();
+
+            if (rs.next()) {
+                String topRegion = rs.getString("region");
+                String topProduct = rs.getString("pro_name");
+                String totalSales = rs.getString("total_sales");
+
+                topRegionDate.setText(topRegion);
+                topProductDate.setText(topProduct);
+                totalSalesDates.setText("Rs. " + totalSales);
+            } else {
+                topProductDate.setText("No data");
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    // Load table data method
+    private void loadTable() {
+
+        try {
+            Connection con = db.getConnection();
+
+            String query
+                    = "SELECT region, "
+                    + "SUM(total_price) AS total_sales, "
+                    + "COUNT(*) AS transactions, "
+                    + "AVG(total_price) AS average_sales "
+                    + "FROM transactions "
+                    + "GROUP BY region";
+
+            PreparedStatement pst = con.prepareStatement(query);
+
+            ResultSet rs = pst.executeQuery();
+
+            DefaultTableModel model = (DefaultTableModel) regionalTable.getModel();
+
+            while (rs.next()) {
+
+                Object[] row = new Object[4];
+                row[0] = rs.getString("region");
+                row[1] = rs.getDouble("total_sales");
+                row[2] = rs.getInt("transactions");
+                row[3] = rs.getDouble("average_sales");
+
+                model.addRow(row);
+            }
+
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(null, e);
+        }
+    }
+
+    // Update table data according to dates selected method
+    private void updateTable(String fromDate, String toDate) {
+
+        try {
+            Connection con = db.getConnection();
+
+            String query
+                    = "SELECT region, "
+                    + "SUM(total_price) AS total_sales, "
+                    + "COUNT(*) AS transactions, "
+                    + "AVG(total_price) AS average_sales "
+                    + "FROM transactions "
+                    + "WHERE STR_TO_DATE(date, '%m/%d/%Y') BETWEEN STR_TO_DATE(?, '%m/%d/%Y') "
+                    + "AND STR_TO_DATE(?, '%m/%d/%Y') "
+                    + "GROUP BY region";
+
+            PreparedStatement pst = con.prepareStatement(query);
+            pst.setString(1, fromDate);
+            pst.setString(2, toDate);
+
+            ResultSet rs = pst.executeQuery();
+
+            DefaultTableModel model = (DefaultTableModel) regionalTable.getModel();
+            model.setRowCount(0);
+
+            while (rs.next()) {
+
+                Object[] row = new Object[4];
+                row[0] = rs.getString("region");
+                row[1] = rs.getDouble("total_sales");
+                row[2] = rs.getInt("transactions");
+                row[3] = String.format("%,.2f", rs.getDouble("average_sales"));
+
+                model.addRow(row);
+            }
+
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(null, e);
+        }
+    }
+
+    //  Method to get regional sales by date range to update the pie and bar chart
+    public Map<String, Double> getRegionalSalesByDateRange(String fromDate, String toDate) {
+
+        Map<String, Double> regionSales = new HashMap<>();
+
+        Connection con = null;
+        PreparedStatement pst = null;
+        ResultSet rs = null;
+
+        try {
+            con = db.getConnection();
+
+            String query = "SELECT region, SUM(total_price) AS total_sales "
+                    + "FROM transactions "
+                    + "WHERE STR_TO_DATE(date, '%m/%d/%Y') BETWEEN STR_TO_DATE(?, '%m/%d/%Y') "
+                    + "AND STR_TO_DATE(?, '%m/%d/%Y') "
+                    + "GROUP BY region";
+
+            pst = con.prepareStatement(query);
+            pst.setString(1, fromDate);
+            pst.setString(2, toDate);
+
+            rs = pst.executeQuery();
+
+            while (rs.next()) {
+                String region = rs.getString("region");
+                double sales = rs.getDouble("total_sales");
+                regionSales.put(region, sales);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return regionSales;
+    }
+
+    //  Pie chart update method according to selected dates    
+    private void updatePieChart(String fromDate, String toDate) {
+
+        // Fetch data from DB
+        Map<String, Double> data = getRegionalSalesByDateRange(fromDate, toDate);
+
+        // Create dataset
+        DefaultPieDataset dataset = new DefaultPieDataset();
+        for (Map.Entry<String, Double> entry : data.entrySet()) {
+            dataset.setValue(entry.getKey(), entry.getValue());
+        }
+
+        // Create chart
+        JFreeChart pieChart = ChartFactory.createPieChart(
+                "Sales by Region",
+                dataset,
+                true, true, false
+        );
+
+        pieChart.getTitle().setFont(new java.awt.Font("SansSerif", java.awt.Font.BOLD, 14));
+        pieChart.getLegend().setItemFont(new java.awt.Font("SansSerif", java.awt.Font.PLAIN, 11));
+
+        // Panel settings
+        ChartPanel chartPanel = new ChartPanel(pieChart);
+        chartPanel.setPreferredSize(new java.awt.Dimension(550, 330));
+
+        pieChartPanel.removeAll();
+        pieChartPanel.setLayout(new java.awt.BorderLayout());
+        pieChartPanel.add(chartPanel, BorderLayout.CENTER);
+        pieChartPanel.revalidate();
+        pieChartPanel.repaint();
+    }
+
+    //  Bar chart update method according to selected dates
+    private void updateBarChart(String fromDate, String toDate) {
+
+        Map<String, Double> data = getRegionalSalesByDateRange(fromDate, toDate);
+
+        DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+        for (Map.Entry<String, Double> entry : data.entrySet()) {
+            dataset.addValue(entry.getValue(), "Sales", entry.getKey());
+        }
+
+        JFreeChart barChart = ChartFactory.createBarChart(
+                "Sales by Region",
+                "Region",
+                "Sales (Rs.)",
+                dataset
+        );
+
+        barChart.getTitle().setFont(new java.awt.Font("SansSerif", java.awt.Font.BOLD, 14));
+
+        barChart.getCategoryPlot().getDomainAxis().setLabelFont(new java.awt.Font("SansSerif", java.awt.Font.PLAIN, 11));
+        barChart.getCategoryPlot().getRangeAxis().setLabelFont(new java.awt.Font("SansSerif", java.awt.Font.PLAIN, 11));
+
+        barChart.getCategoryPlot().getDomainAxis().setTickLabelFont(new java.awt.Font("SansSerif", java.awt.Font.PLAIN, 10));
+        barChart.getCategoryPlot().getRangeAxis().setTickLabelFont(new java.awt.Font("SansSerif", java.awt.Font.PLAIN, 10));
+
+        ChartPanel chartPanel = new ChartPanel(barChart);
+        chartPanel.setPreferredSize(new java.awt.Dimension(550, 330));
+        chartPanel.setMaximumDrawWidth(550);
+        chartPanel.setMaximumDrawHeight(330);
+
+        barChartPanel.removeAll();
+        barChartPanel.setLayout(new java.awt.BorderLayout());
+        barChartPanel.add(chartPanel, BorderLayout.CENTER);
+        barChartPanel.revalidate();
+        barChartPanel.repaint();
     }
 
     public Map<String, Double> getRegionalSalesData() {
@@ -224,6 +497,197 @@ public class RegionalSales extends javax.swing.JPanel {
         barChartPanel.repaint();
     }
 
+    public void generateReport(String fromDate, String toDate) {
+        Connection con = null;
+        PreparedStatement pst = null;
+        java.sql.ResultSet rs = null;
+
+        // Initialize variables with defaults
+        String topRegion = "";
+        String topProduct = "";
+        String totalSales = "";
+
+        try {
+            con = db.getConnection();
+            String query = "SELECT region, pro_name, SUM(total_price) as total_sales "
+                    + "FROM transactions "
+                    + "WHERE STR_TO_DATE(date, '%m/%d/%Y') BETWEEN STR_TO_DATE(?, '%m/%d/%Y') "
+                    + "AND STR_TO_DATE(?, '%m/%d/%Y') "
+                    + "GROUP BY region "
+                    + "ORDER BY total_sales DESC "
+                    + "LIMIT 1";
+
+            pst = con.prepareStatement(query);
+            pst.setString(1, fromDate);
+            pst.setString(2, toDate);
+
+            rs = pst.executeQuery();
+
+            if (rs.next()) {
+                topRegion = rs.getString("region");
+                topProduct = rs.getString("pro_name");
+                double sales = rs.getDouble("total_sales");
+                totalSales = "Rs. " + String.format("%,.2f", sales);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        generatePDFReport(topRegion, topProduct, totalSales);
+    }
+
+    private void generatePDFReport(String topRegion, String topProduct, String totalSales) {
+        OutputStream os = null;
+
+        try {
+            Date fromSelectedDate = dateFromChooser.getDate();
+            Date toSelectedDate = dateToChooser.getDate();
+            SimpleDateFormat displayFormat = new SimpleDateFormat("MMMM dd, yyyy");
+            SimpleDateFormat fileNameFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
+
+            // XHTML content for PDF - OPTIMIZED FOR SINGLE PAGE
+            StringBuilder html = new StringBuilder();
+            html.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+            html.append("<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">");
+            html.append("<html xmlns=\"http://www.w3.org/1999/xhtml\">");
+            html.append("<head>");
+            html.append("<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\"/>");
+            html.append("<title>Regional Sales Report</title>");
+            html.append("<style type=\"text/css\">");
+            html.append("@page { size: A4; margin: 1.5cm; }");
+            html.append("body { font-family: Arial, sans-serif; margin: 15px; line-height: 1.4; font-size: 11px; }");
+            html.append("h1 { color: #2c3e50; text-align: center; margin-bottom: 8px; font-size: 18px; }");
+            html.append("h2 { color: #34495e; border-bottom: 1px solid #3498db; padding-bottom: 3px; margin-top: 15px; margin-bottom: 10px; font-size: 14px; }");
+            html.append(".report-info { text-align: center; color: #7f8c8d; margin-bottom: 10px; font-size: 10px; }");
+
+            // Summary rows
+            html.append(".summary-container { width: 100%; margin: 10px 0; }");
+            html.append(".summary-table { width: 100%; border-collapse: collapse; }");
+            html.append(".summary-card { padding: 10px; background: #f8f9fa; border: 1px solid #dee2e6; bor text-align: center; }");
+            html.append(".card-title { font-weight: bold; color: #495057; font-size: 10px; margin-bottom: 5px; }");
+            html.append(".card-value { font-size: 13px; color: #28a745; font-weight: bold; }");
+
+            html.append("table.data-table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 10px; }");
+            html.append("th { background-color: #3498db; color: white; padding: 8px; text-align: left; font-weight: bold; }");
+            html.append("td { padding: 6px; border: 1px solid #ddd; }");
+            html.append(".avoid-break { page-break-inside: avoid; }");
+            html.append("</style>");
+            html.append("</head>");
+            html.append("<body class=\"avoid-break\">");
+
+            // Report header
+            html.append("<h1>Regional Sales Report</h1>");
+            html.append("<div class=\"report-info\">");
+
+            if (fromSelectedDate != null && toSelectedDate != null) {
+                html.append("<p><strong>Report Period:</strong> " + displayFormat.format(fromSelectedDate)
+                        + " to " + displayFormat.format(toSelectedDate) + "</p>");
+            } else {
+                html.append("<p><strong>Report Period:</strong> All Time</p>");
+            }
+
+            html.append("<p><strong>Generated On:</strong> " + displayFormat.format(new Date()) + "</p>");
+            html.append("</div>");
+
+            // Summary Cards - Using single row table
+            html.append("<h2>Top Region Summary</h2>");
+            html.append("<div class=\"summary-container\">");
+            html.append("<table class=\"summary-table\">");
+            html.append("<tr>");
+            html.append("<td width=\"35%\"><div class=\"summary-card\"><div class=\"card-title\">Top Region</div><div class=\"card-value\">").append(topRegion).append("</div></div></td>");
+            html.append("<td width=\"35%\"><div class=\"summary-card\"><div class=\"card-title\">Total Sales</div><div class=\"card-value\">").append(totalSales).append("</div></div></td>");
+            html.append("<td width=\"35%\"><div class=\"summary-card\"><div class=\"card-title\">Top Product</div><div class=\"card-value\">").append(topProduct).append("</div></div></td>");
+            html.append("</tr>");
+            html.append("</table>");
+            html.append("</div>");
+
+            // Table Data
+            html.append("<h2>Regional Sales Data</h2>");
+            html.append("<table class=\"data-table\">");
+            html.append("<tr><th>Region</th><th>Total Sales (Rs.)</th><th>Transactions</th><th>Average Sales (Rs.)</th></tr>");
+
+            DefaultTableModel model = (DefaultTableModel) regionalTable.getModel();
+
+            for (int row = 0; row < model.getRowCount(); row++) {
+                html.append("<tr>");
+                for (int col = 0; col < model.getColumnCount(); col++) {
+                    Object value = model.getValueAt(row, col);
+                    String cellValue = value != null ? value.toString() : "";
+
+                    // Format numbers
+                    if (col > 0 && value instanceof Number) {
+                        if (col == 1 || col == 3) {
+                            cellValue = String.format("%,.2f", ((Number) value).doubleValue());
+                        } else if (col == 2) {
+                            cellValue = String.format("%,d", ((Number) value).intValue());
+                        }
+                    }
+
+                    // Escape special XML characters
+                    cellValue = cellValue.replace("&", "&amp;")
+                            .replace("<", "&lt;")
+                            .replace(">", "&gt;")
+                            .replace("\"", "&quot;")
+                            .replace("'", "&apos;");
+
+                    html.append("<td>").append(cellValue).append("</td>");
+                }
+                html.append("</tr>");
+            }
+
+            html.append("</table>");
+
+            html.append("</body>");
+            html.append("</html>");
+
+            // Save PDF file
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setDialogTitle("Save PDF Report");
+            String defaultFileName = "Regional_Sales_Report_" + fileNameFormat.format(new Date()) + ".pdf";
+            fileChooser.setSelectedFile(new File(defaultFileName));
+
+            if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+                File file = fileChooser.getSelectedFile();
+
+                // Ensure .pdf extension
+                if (!file.getName().toLowerCase().endsWith(".pdf")) {
+                    file = new File(file.getAbsolutePath() + ".pdf");
+                }
+
+                // Create PDF from HTML
+                os = new FileOutputStream(file);
+                ITextRenderer renderer = new ITextRenderer();
+
+                // Set document with HTML content
+                renderer.setDocumentFromString(html.toString());
+                renderer.layout();
+                renderer.createPDF(os);
+
+                os.close();
+
+                JOptionPane.showMessageDialog(this, "PDF report generated successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+
+                // Open the PDF after generating
+                if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
+                    Desktop.getDesktop().open(file);
+                }
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Error generating PDF: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        } finally {
+            if (os != null) {
+                try {
+                    os.close();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -253,10 +717,13 @@ public class RegionalSales extends javax.swing.JPanel {
         jPanel4 = new javax.swing.JPanel();
         pieChartPanel = new javax.swing.JPanel();
         jPanel2 = new javax.swing.JPanel();
-        uploadBtn = new javax.swing.JButton();
-        uploadBtn1 = new javax.swing.JButton();
-        jDateChooser1 = new com.toedter.calendar.JDateChooser();
-        jDateChooser2 = new com.toedter.calendar.JDateChooser();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        regionalTable = new javax.swing.JTable();
+        jLabel10 = new javax.swing.JLabel();
+        generateReportBtn = new javax.swing.JButton();
+        refreshBtn = new javax.swing.JButton();
+        dateFromChooser = new com.toedter.calendar.JDateChooser();
+        dateToChooser = new com.toedter.calendar.JDateChooser();
         jLabel2 = new javax.swing.JLabel();
         jLabel3 = new javax.swing.JLabel();
         jPanel5 = new javax.swing.JPanel();
@@ -265,14 +732,14 @@ public class RegionalSales extends javax.swing.JPanel {
         jLabel9 = new javax.swing.JLabel();
         jPanel7 = new javax.swing.JPanel();
         jPanel8 = new javax.swing.JPanel();
-        jLabel12 = new javax.swing.JLabel();
+        topRegionDate = new javax.swing.JLabel();
         jLabel16 = new javax.swing.JLabel();
         jPanel12 = new javax.swing.JPanel();
-        jLabel17 = new javax.swing.JLabel();
+        topProductDate = new javax.swing.JLabel();
         jLabel18 = new javax.swing.JLabel();
         jPanel13 = new javax.swing.JPanel();
-        jLabel19 = new javax.swing.JLabel();
-        jButton1 = new javax.swing.JButton();
+        totalSalesDates = new javax.swing.JLabel();
+        resetBtn = new javax.swing.JButton();
 
         jPanel1.setBackground(new java.awt.Color(255, 255, 255));
 
@@ -457,35 +924,73 @@ public class RegionalSales extends javax.swing.JPanel {
 
         jTabbedPane1.addTab("Chart View 2", jPanel4);
 
+        regionalTable.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+
+            },
+            new String [] {
+                "Region", "Total Sales", "Transactions", "Average Sales"
+            }
+        ) {
+            boolean[] canEdit = new boolean [] {
+                false, false, false, false
+            };
+
+            public boolean isCellEditable(int rowIndex, int columnIndex) {
+                return canEdit [columnIndex];
+            }
+        });
+        jScrollPane1.setViewportView(regionalTable);
+        if (regionalTable.getColumnModel().getColumnCount() > 0) {
+            regionalTable.getColumnModel().getColumn(0).setResizable(false);
+            regionalTable.getColumnModel().getColumn(1).setResizable(false);
+            regionalTable.getColumnModel().getColumn(2).setResizable(false);
+            regionalTable.getColumnModel().getColumn(3).setResizable(false);
+        }
+
+        jLabel10.setFont(new java.awt.Font("Segoe UI", 0, 16)); // NOI18N
+        jLabel10.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        jLabel10.setText("Regional Sales Data");
+
         javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
         jPanel2.setLayout(jPanel2Layout);
         jPanel2Layout.setHorizontalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 562, Short.MAX_VALUE)
+            .addGroup(jPanel2Layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 529, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel10, javax.swing.GroupLayout.PREFERRED_SIZE, 183, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(21, Short.MAX_VALUE))
         );
         jPanel2Layout.setVerticalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 402, Short.MAX_VALUE)
+            .addGroup(jPanel2Layout.createSequentialGroup()
+                .addGap(7, 7, 7)
+                .addComponent(jLabel10, javax.swing.GroupLayout.PREFERRED_SIZE, 31, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 119, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(238, Short.MAX_VALUE))
         );
 
         jTabbedPane1.addTab("Table View", jPanel2);
 
-        uploadBtn.setBackground(new java.awt.Color(13, 42, 171));
-        uploadBtn.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 16)); // NOI18N
-        uploadBtn.setForeground(new java.awt.Color(255, 255, 255));
-        uploadBtn.setText("Generate Report");
-        uploadBtn.addActionListener(new java.awt.event.ActionListener() {
+        generateReportBtn.setBackground(new java.awt.Color(13, 42, 171));
+        generateReportBtn.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 16)); // NOI18N
+        generateReportBtn.setForeground(new java.awt.Color(255, 255, 255));
+        generateReportBtn.setText("Generate Report");
+        generateReportBtn.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                uploadBtnActionPerformed(evt);
+                generateReportBtnActionPerformed(evt);
             }
         });
 
-        uploadBtn1.setBackground(new java.awt.Color(215, 223, 255));
-        uploadBtn1.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 16)); // NOI18N
-        uploadBtn1.setText("Refresh");
-        uploadBtn1.addActionListener(new java.awt.event.ActionListener() {
+        refreshBtn.setBackground(new java.awt.Color(215, 223, 255));
+        refreshBtn.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 16)); // NOI18N
+        refreshBtn.setText("Refresh");
+        refreshBtn.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                uploadBtn1ActionPerformed(evt);
+                refreshBtnActionPerformed(evt);
             }
         });
 
@@ -522,8 +1027,7 @@ public class RegionalSales extends javax.swing.JPanel {
 
         jPanel8.setBackground(new java.awt.Color(255, 255, 255));
 
-        jLabel12.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
-        jLabel12.setText("Colombo");
+        topRegionDate.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
 
         javax.swing.GroupLayout jPanel8Layout = new javax.swing.GroupLayout(jPanel8);
         jPanel8.setLayout(jPanel8Layout);
@@ -531,12 +1035,12 @@ public class RegionalSales extends javax.swing.JPanel {
             jPanel8Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel8Layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jLabel12, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(topRegionDate, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addContainerGap())
         );
         jPanel8Layout.setVerticalGroup(
             jPanel8Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jLabel12, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 37, Short.MAX_VALUE)
+            .addComponent(topRegionDate, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 37, Short.MAX_VALUE)
         );
 
         jLabel16.setFont(new java.awt.Font("Microsoft Tai Le", 0, 16)); // NOI18N
@@ -545,8 +1049,7 @@ public class RegionalSales extends javax.swing.JPanel {
 
         jPanel12.setBackground(new java.awt.Color(255, 255, 255));
 
-        jLabel17.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
-        jLabel17.setText("Colombo");
+        topProductDate.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
 
         javax.swing.GroupLayout jPanel12Layout = new javax.swing.GroupLayout(jPanel12);
         jPanel12.setLayout(jPanel12Layout);
@@ -554,22 +1057,21 @@ public class RegionalSales extends javax.swing.JPanel {
             jPanel12Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel12Layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jLabel17, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(topProductDate, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addContainerGap())
         );
         jPanel12Layout.setVerticalGroup(
             jPanel12Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jLabel17, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 37, Short.MAX_VALUE)
+            .addComponent(topProductDate, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 37, Short.MAX_VALUE)
         );
 
         jLabel18.setFont(new java.awt.Font("Microsoft Tai Le", 0, 16)); // NOI18N
         jLabel18.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-        jLabel18.setText("Total Revenue");
+        jLabel18.setText("Total Sales in Region");
 
         jPanel13.setBackground(new java.awt.Color(255, 255, 255));
 
-        jLabel19.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
-        jLabel19.setText("Colombo");
+        totalSalesDates.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
 
         javax.swing.GroupLayout jPanel13Layout = new javax.swing.GroupLayout(jPanel13);
         jPanel13.setLayout(jPanel13Layout);
@@ -577,12 +1079,12 @@ public class RegionalSales extends javax.swing.JPanel {
             jPanel13Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel13Layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jLabel19, javax.swing.GroupLayout.DEFAULT_SIZE, 189, Short.MAX_VALUE)
+                .addComponent(totalSalesDates, javax.swing.GroupLayout.DEFAULT_SIZE, 189, Short.MAX_VALUE)
                 .addContainerGap())
         );
         jPanel13Layout.setVerticalGroup(
             jPanel13Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jLabel19, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 37, Short.MAX_VALUE)
+            .addComponent(totalSalesDates, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 37, Short.MAX_VALUE)
         );
 
         javax.swing.GroupLayout jPanel5Layout = new javax.swing.GroupLayout(jPanel5);
@@ -634,11 +1136,11 @@ public class RegionalSales extends javax.swing.JPanel {
                 .addContainerGap(43, Short.MAX_VALUE))
         );
 
-        jButton1.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 15)); // NOI18N
-        jButton1.setText("Reset");
-        jButton1.addActionListener(new java.awt.event.ActionListener() {
+        resetBtn.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 16)); // NOI18N
+        resetBtn.setText("Reset");
+        resetBtn.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButton1ActionPerformed(evt);
+                resetBtnActionPerformed(evt);
             }
         });
 
@@ -653,24 +1155,24 @@ public class RegionalSales extends javax.swing.JPanel {
                         .addGroup(jPanel1Layout.createSequentialGroup()
                             .addComponent(jLabel2)
                             .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                            .addComponent(jDateChooser1, javax.swing.GroupLayout.PREFERRED_SIZE, 153, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(dateFromChooser, javax.swing.GroupLayout.PREFERRED_SIZE, 153, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addGap(18, 18, 18)
                             .addComponent(jLabel3, javax.swing.GroupLayout.PREFERRED_SIZE, 24, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                            .addComponent(jDateChooser2, javax.swing.GroupLayout.PREFERRED_SIZE, 153, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(dateToChooser, javax.swing.GroupLayout.PREFERRED_SIZE, 153, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addGap(449, 449, 449))
                         .addGroup(jPanel1Layout.createSequentialGroup()
                             .addComponent(jTabbedPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 567, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addGap(18, 18, 18)
                             .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                .addComponent(jButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 272, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(resetBtn, javax.swing.GroupLayout.PREFERRED_SIZE, 272, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addComponent(jPanel5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))))
                     .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, 312, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                         .addGroup(jPanel1Layout.createSequentialGroup()
-                            .addComponent(uploadBtn1, javax.swing.GroupLayout.PREFERRED_SIZE, 125, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(refreshBtn, javax.swing.GroupLayout.PREFERRED_SIZE, 125, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                            .addComponent(uploadBtn, javax.swing.GroupLayout.PREFERRED_SIZE, 158, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(generateReportBtn, javax.swing.GroupLayout.PREFERRED_SIZE, 158, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addGroup(jPanel1Layout.createSequentialGroup()
                             .addComponent(jPanel6, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -694,20 +1196,19 @@ public class RegionalSales extends javax.swing.JPanel {
                     .addComponent(jPanel20, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addGap(18, 18, 18)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                        .addComponent(jDateChooser1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addComponent(jDateChooser2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addComponent(jLabel3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addComponent(jLabel2, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                    .addComponent(uploadBtn1, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 33, Short.MAX_VALUE)
-                    .addComponent(uploadBtn, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addComponent(refreshBtn, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 33, Short.MAX_VALUE)
+                    .addComponent(generateReportBtn, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(jLabel2, javax.swing.GroupLayout.DEFAULT_SIZE, 33, Short.MAX_VALUE)
+                    .addComponent(dateFromChooser, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(jLabel3, javax.swing.GroupLayout.DEFAULT_SIZE, 33, Short.MAX_VALUE)
+                    .addComponent(dateToChooser, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addGap(14, 14, 14)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
                         .addGap(12, 12, 12)
                         .addComponent(jPanel5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(18, 18, 18)
-                        .addComponent(jButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 43, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addComponent(resetBtn, javax.swing.GroupLayout.PREFERRED_SIZE, 43, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addComponent(jTabbedPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 432, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
@@ -724,34 +1225,56 @@ public class RegionalSales extends javax.swing.JPanel {
         );
     }// </editor-fold>//GEN-END:initComponents
 
-    private void uploadBtn1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_uploadBtn1ActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_uploadBtn1ActionPerformed
+    private void refreshBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_refreshBtnActionPerformed
 
-    private void uploadBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_uploadBtnActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_uploadBtnActionPerformed
+        dataAnalysis();
 
-    private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_jButton1ActionPerformed
+    }//GEN-LAST:event_refreshBtnActionPerformed
+
+    //  Generate report button    
+    private void generateReportBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_generateReportBtnActionPerformed
+
+        Date fromSelectedDate = dateFromChooser.getDate();
+        Date toSelectedDate = dateToChooser.getDate();
+
+        if (fromSelectedDate == null || toSelectedDate == null) {
+            JOptionPane.showMessageDialog(this,"Select dates to analyze", "Date Required", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        SimpleDateFormat dbFormat = new SimpleDateFormat("MM/dd/yyyy");
+        String fromDate = dbFormat.format(fromSelectedDate);
+        String toDate = dbFormat.format(toSelectedDate);
+
+        // Generate the report
+        generateReport(fromDate, toDate);
+
+    }//GEN-LAST:event_generateReportBtnActionPerformed
+
+    private void resetBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_resetBtnActionPerformed
+
+        topRegionDate.setText("");
+        topProductDate.setText("");
+        totalSalesDates.setText("");
+        createBarChart();
+        createPieChart();
+        dateFromChooser.setDate(null);
+        dateToChooser.setDate(null);
+
+    }//GEN-LAST:event_resetBtnActionPerformed
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JLabel average_per_region;
     private javax.swing.JPanel barChartPanel;
-    private javax.swing.JButton jButton1;
-    private com.toedter.calendar.JDateChooser jDateChooser1;
-    private com.toedter.calendar.JDateChooser jDateChooser2;
+    private com.toedter.calendar.JDateChooser dateFromChooser;
+    private com.toedter.calendar.JDateChooser dateToChooser;
+    private javax.swing.JButton generateReportBtn;
     private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel10;
     private javax.swing.JLabel jLabel11;
-    private javax.swing.JLabel jLabel12;
-    private javax.swing.JLabel jLabel13;
-    private javax.swing.JLabel jLabel14;
     private javax.swing.JLabel jLabel16;
-    private javax.swing.JLabel jLabel17;
     private javax.swing.JLabel jLabel18;
-    private javax.swing.JLabel jLabel19;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
@@ -761,7 +1284,6 @@ public class RegionalSales extends javax.swing.JPanel {
     private javax.swing.JLabel jLabel8;
     private javax.swing.JLabel jLabel9;
     private javax.swing.JPanel jPanel1;
-    private javax.swing.JPanel jPanel10;
     private javax.swing.JPanel jPanel12;
     private javax.swing.JPanel jPanel13;
     private javax.swing.JPanel jPanel15;
@@ -774,13 +1296,17 @@ public class RegionalSales extends javax.swing.JPanel {
     private javax.swing.JPanel jPanel6;
     private javax.swing.JPanel jPanel7;
     private javax.swing.JPanel jPanel8;
-    private javax.swing.JPanel jPanel9;
+    private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JTabbedPane jTabbedPane1;
     private javax.swing.JPanel pieChartPanel;
+    private javax.swing.JButton refreshBtn;
+    private javax.swing.JTable regionalTable;
+    private javax.swing.JButton resetBtn;
+    private javax.swing.JLabel topProductDate;
+    private javax.swing.JLabel topRegionDate;
     private javax.swing.JLabel top_region;
+    private javax.swing.JLabel totalSalesDates;
     private javax.swing.JLabel total_regions;
     private javax.swing.JLabel total_sales_lbl;
-    private javax.swing.JButton uploadBtn;
-    private javax.swing.JButton uploadBtn1;
     // End of variables declaration//GEN-END:variables
 }

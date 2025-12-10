@@ -159,7 +159,7 @@ public class RegionalSales extends javax.swing.JPanel {
 
         // Check if dates are selected
         if (fromSelectedDate == null || toSelectedDate == null) {
-            JOptionPane.showMessageDialog(null, "Please choose dates for analysis.");
+            JOptionPane.showMessageDialog(this,"Select dates to analyze", "Date Required", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
@@ -497,7 +497,9 @@ public class RegionalSales extends javax.swing.JPanel {
         barChartPanel.repaint();
     }
 
+    //  Generate report    
     public void generateReport(String fromDate, String toDate) {
+        
         Connection con = null;
         PreparedStatement pst = null;
         java.sql.ResultSet rs = null;
@@ -535,9 +537,11 @@ public class RegionalSales extends javax.swing.JPanel {
         }
 
         generatePDFReport(topRegion, topProduct, totalSales);
+        
     }
 
     private void generatePDFReport(String topRegion, String topProduct, String totalSales) {
+        
         OutputStream os = null;
 
         try {
@@ -957,11 +961,11 @@ public class RegionalSales extends javax.swing.JPanel {
         jPanel2Layout.setHorizontalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel2Layout.createSequentialGroup()
-                .addContainerGap()
+                .addGap(16, 16, 16)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 529, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel10, javax.swing.GroupLayout.PREFERRED_SIZE, 183, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(21, Short.MAX_VALUE))
+                .addContainerGap(17, Short.MAX_VALUE))
         );
         jPanel2Layout.setVerticalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)

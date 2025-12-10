@@ -27,6 +27,10 @@ import java.util.Date;
 import javax.swing.JFileChooser;
 import javax.swing.table.DefaultTableModel;
 import java.nio.file.Files;
+import java.sql.Statement;
+import java.text.DecimalFormat;
+import java.util.ArrayList;
+import javax.swing.JComboBox;
 import org.xhtmlrenderer.pdf.ITextRenderer;
 
 /**
@@ -40,18 +44,19 @@ public class ProductPerformance extends javax.swing.JPanel {
      */
     public ProductPerformance() {
         initComponents();
+        loadProductsToComboBox(productComboBox);
     }
 
-    //  Data analysis method (When date choosen and refresh button click)
+    //  Data analysis method
     public void dataAnalysis() {
 
         Date fromSelectedDate = dateFromChooser.getDate();
         Date toSelectedDate = dateToChooser.getDate();
-        String pro_name = productSearch.getText();
+        String pro_name = (String) productComboBox.getSelectedItem();
 
         // Check if dates are selected
         if (fromSelectedDate == null || toSelectedDate == null || pro_name.trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this,"Select dates and product name to analyze", "Date Required", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Select dates and product name to analyze", "Date Required", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
@@ -59,49 +64,95 @@ public class ProductPerformance extends javax.swing.JPanel {
         String fromDate = dbDateFormat.format(fromSelectedDate);
         String toDate = dbDateFormat.format(toSelectedDate);
 
-
         try {
-            updateSidePanel(fromDate, toDate);
+            updateSidePanel(fromDate, toDate, pro_name);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    //  Method to update the side panel according to selected date range    
-    public void updateSidePanel(String fromDate, String toDate) {
+    //  Load products to combo box    
+    public void loadProductsToComboBox(JComboBox<String> productComboBox) {
         
         Connection con = null;
         PreparedStatement pst = null;
-        java.sql.ResultSet rs = null;
+        ResultSet rs = null;
 
         try {
-
             con = db.getConnection();
 
-            String query = "SELECT region, pro_name, SUM(total_price) as total_sales "
+            // Get distinct product names
+            String query = "SELECT DISTINCT pro_name FROM transactions ORDER BY pro_name";
+            pst = con.prepareStatement(query);
+            rs = pst.executeQuery();
+
+            productComboBox.addItem("-- Select Product --");
+
+            // Add all products
+            while (rs.next()) {
+                String productName = rs.getString("pro_name");
+                productComboBox.addItem(productName);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(null, "Error loading products: " + e.getMessage());
+        }
+        
+    }
+
+    //  Method to update the side panel according to selected date range    
+    public void updateSidePanel(String fromDate, String toDate, String pro_name) {
+
+        Connection con = null;
+        PreparedStatement pst = null;
+        ResultSet rs = null;
+
+        try {
+            con = db.getConnection();
+
+            String query = "SELECT "
+                    + "SUM(qty) as total_sold, "
+                    + "SUM(total_price) as total_revenue, "
+                    + "(SELECT region FROM transactions "
+                    + " WHERE pro_name LIKE '" + pro_name + "%' "
+                    + " AND STR_TO_DATE(date, '%m/%d/%Y') BETWEEN STR_TO_DATE(?, '%m/%d/%Y') AND STR_TO_DATE(?, '%m/%d/%Y') "
+                    + " GROUP BY region "
+                    + " ORDER BY SUM(qty) DESC "
+                    + " LIMIT 1) as top_region "
                     + "FROM transactions "
-                    + "WHERE STR_TO_DATE(date, '%m/%d/%Y') BETWEEN STR_TO_DATE(?, '%m/%d/%Y') "
-                    + "AND STR_TO_DATE(?, '%m/%d/%Y') "
-                    + "GROUP BY region "
-                    + "ORDER BY total_sales DESC "
-                    + "LIMIT 1";
+                    + "WHERE pro_name LIKE '" + pro_name + "%' "
+                    + "AND STR_TO_DATE(date, '%m/%d/%Y') BETWEEN STR_TO_DATE(?, '%m/%d/%Y') AND STR_TO_DATE(?, '%m/%d/%Y')";
 
             pst = con.prepareStatement(query);
             pst.setString(1, fromDate);
             pst.setString(2, toDate);
+            pst.setString(3, fromDate);
+            pst.setString(4, toDate);
 
             rs = pst.executeQuery();
 
             if (rs.next()) {
-                String topRegion = rs.getString("region");
-                String topProduct = rs.getString("pro_name");
-                String totalSales = rs.getString("total_sales");
+                // 1. Total Sold
+                int totalSold = rs.getInt("total_sold");
+                totalSoldLabel.setText(String.valueOf(totalSold));
 
-                topRegionDate.setText(topRegion);
-                topProductDate.setText(topProduct);
-                totalSalesDates.setText("Rs. " + totalSales);
+                // 2. Total Revenue
+                double totalRevenue = rs.getDouble("total_revenue");
+                DecimalFormat df = new DecimalFormat("#,##0.00");
+                totalRevenueLabel.setText("Rs. " + df.format(totalRevenue));
+
+                // 3. Top Region
+                String topRegion = rs.getString("top_region");
+                if (topRegion != null) {
+                    topRegionLabel.setText(topRegion);
+                } else {
+                    topRegionLabel.setText("No regional data");
+                }
             } else {
-                topProductDate.setText("No data");
+                totalSoldLabel.setText("0");
+                totalRevenueLabel.setText("Rs. 0.00");
+                topRegionLabel.setText("No data");
             }
 
         } catch (Exception e) {
@@ -142,17 +193,17 @@ public class ProductPerformance extends javax.swing.JPanel {
         jLabel9 = new javax.swing.JLabel();
         jPanel7 = new javax.swing.JPanel();
         jPanel8 = new javax.swing.JPanel();
-        topRegionDate = new javax.swing.JLabel();
+        totalSoldLabel = new javax.swing.JLabel();
         jLabel16 = new javax.swing.JLabel();
         jPanel12 = new javax.swing.JPanel();
-        topProductDate = new javax.swing.JLabel();
+        totalRevenueLabel = new javax.swing.JLabel();
         jLabel18 = new javax.swing.JLabel();
         jPanel13 = new javax.swing.JPanel();
-        totalSalesDates = new javax.swing.JLabel();
+        topRegionLabel = new javax.swing.JLabel();
         resetBtn = new javax.swing.JButton();
         jLabel12 = new javax.swing.JLabel();
-        productSearch = new javax.swing.JTextField();
         jSeparator1 = new javax.swing.JSeparator();
+        productComboBox = new javax.swing.JComboBox<>();
 
         jPanel1.setBackground(new java.awt.Color(255, 255, 255));
 
@@ -328,7 +379,7 @@ public class ProductPerformance extends javax.swing.JPanel {
 
         jPanel8.setBackground(new java.awt.Color(255, 255, 255));
 
-        topRegionDate.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
+        totalSoldLabel.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
 
         javax.swing.GroupLayout jPanel8Layout = new javax.swing.GroupLayout(jPanel8);
         jPanel8.setLayout(jPanel8Layout);
@@ -336,12 +387,12 @@ public class ProductPerformance extends javax.swing.JPanel {
             jPanel8Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel8Layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(topRegionDate, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(totalSoldLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addContainerGap())
         );
         jPanel8Layout.setVerticalGroup(
             jPanel8Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(topRegionDate, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 37, Short.MAX_VALUE)
+            .addComponent(totalSoldLabel, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 37, Short.MAX_VALUE)
         );
 
         jLabel16.setFont(new java.awt.Font("Microsoft Tai Le", 0, 16)); // NOI18N
@@ -350,7 +401,7 @@ public class ProductPerformance extends javax.swing.JPanel {
 
         jPanel12.setBackground(new java.awt.Color(255, 255, 255));
 
-        topProductDate.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
+        totalRevenueLabel.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
 
         javax.swing.GroupLayout jPanel12Layout = new javax.swing.GroupLayout(jPanel12);
         jPanel12.setLayout(jPanel12Layout);
@@ -358,12 +409,12 @@ public class ProductPerformance extends javax.swing.JPanel {
             jPanel12Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel12Layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(topProductDate, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(totalRevenueLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addContainerGap())
         );
         jPanel12Layout.setVerticalGroup(
             jPanel12Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(topProductDate, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 37, Short.MAX_VALUE)
+            .addComponent(totalRevenueLabel, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 37, Short.MAX_VALUE)
         );
 
         jLabel18.setFont(new java.awt.Font("Microsoft Tai Le", 0, 16)); // NOI18N
@@ -372,7 +423,7 @@ public class ProductPerformance extends javax.swing.JPanel {
 
         jPanel13.setBackground(new java.awt.Color(255, 255, 255));
 
-        totalSalesDates.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
+        topRegionLabel.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
 
         javax.swing.GroupLayout jPanel13Layout = new javax.swing.GroupLayout(jPanel13);
         jPanel13.setLayout(jPanel13Layout);
@@ -380,12 +431,12 @@ public class ProductPerformance extends javax.swing.JPanel {
             jPanel13Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel13Layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(totalSalesDates, javax.swing.GroupLayout.DEFAULT_SIZE, 189, Short.MAX_VALUE)
+                .addComponent(topRegionLabel, javax.swing.GroupLayout.DEFAULT_SIZE, 189, Short.MAX_VALUE)
                 .addContainerGap())
         );
         jPanel13Layout.setVerticalGroup(
             jPanel13Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(totalSalesDates, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 37, Short.MAX_VALUE)
+            .addComponent(topRegionLabel, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 37, Short.MAX_VALUE)
         );
 
         javax.swing.GroupLayout jPanel5Layout = new javax.swing.GroupLayout(jPanel5);
@@ -448,14 +499,14 @@ public class ProductPerformance extends javax.swing.JPanel {
         jLabel12.setFont(new java.awt.Font("Microsoft PhagsPa", 0, 18)); // NOI18N
         jLabel12.setText("Product Name");
 
-        productSearch.setFont(new java.awt.Font("Segoe UI", 0, 14)); // NOI18N
-        productSearch.addActionListener(new java.awt.event.ActionListener() {
+        jSeparator1.setForeground(new java.awt.Color(0, 0, 102));
+
+        productComboBox.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        productComboBox.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                productSearchActionPerformed(evt);
+                productComboBoxActionPerformed(evt);
             }
         });
-
-        jSeparator1.setForeground(new java.awt.Color(0, 0, 102));
 
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
@@ -469,8 +520,8 @@ public class ProductPerformance extends javax.swing.JPanel {
                         .addGroup(javax.swing.GroupLayout.Alignment.LEADING, jPanel1Layout.createSequentialGroup()
                             .addComponent(jLabel12, javax.swing.GroupLayout.PREFERRED_SIZE, 122, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                            .addComponent(productSearch, javax.swing.GroupLayout.PREFERRED_SIZE, 289, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(productComboBox, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addGap(37, 37, 37)
                             .addComponent(jLabel2)
                             .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                             .addComponent(dateFromChooser, javax.swing.GroupLayout.PREFERRED_SIZE, 153, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -501,12 +552,12 @@ public class ProductPerformance extends javax.swing.JPanel {
                 .addComponent(jSeparator1, javax.swing.GroupLayout.PREFERRED_SIZE, 14, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(productSearch, javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(jLabel2, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(dateFromChooser, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(jLabel3, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(dateToChooser, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 33, Short.MAX_VALUE)
-                    .addComponent(jLabel12, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addComponent(jLabel12, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(productComboBox))
                 .addGap(36, 36, 36)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(jPanel1Layout.createSequentialGroup()
@@ -534,9 +585,7 @@ public class ProductPerformance extends javax.swing.JPanel {
     }// </editor-fold>//GEN-END:initComponents
 
     private void refreshBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_refreshBtnActionPerformed
-
         dataAnalysis();
-
     }//GEN-LAST:event_refreshBtnActionPerformed
 
     //  Generate report button    
@@ -548,9 +597,9 @@ public class ProductPerformance extends javax.swing.JPanel {
 
     }//GEN-LAST:event_resetBtnActionPerformed
 
-    private void productSearchActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_productSearchActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_productSearchActionPerformed
+    private void productComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_productComboBoxActionPerformed
+
+    }//GEN-LAST:event_productComboBoxActionPerformed
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
@@ -581,12 +630,12 @@ public class ProductPerformance extends javax.swing.JPanel {
     private javax.swing.JSeparator jSeparator1;
     private javax.swing.JTabbedPane jTabbedPane1;
     private javax.swing.JPanel pieChartPanel;
-    private javax.swing.JTextField productSearch;
+    private javax.swing.JComboBox<String> productComboBox;
     private javax.swing.JButton refreshBtn;
     private javax.swing.JTable regionalTable;
     private javax.swing.JButton resetBtn;
-    private javax.swing.JLabel topProductDate;
-    private javax.swing.JLabel topRegionDate;
-    private javax.swing.JLabel totalSalesDates;
+    private javax.swing.JLabel topRegionLabel;
+    private javax.swing.JLabel totalRevenueLabel;
+    private javax.swing.JLabel totalSoldLabel;
     // End of variables declaration//GEN-END:variables
 }

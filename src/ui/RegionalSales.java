@@ -545,12 +545,13 @@ public class RegionalSales extends javax.swing.JPanel {
         OutputStream os = null;
 
         try {
+            
             Date fromSelectedDate = dateFromChooser.getDate();
             Date toSelectedDate = dateToChooser.getDate();
             SimpleDateFormat displayFormat = new SimpleDateFormat("MMMM dd, yyyy");
             SimpleDateFormat fileNameFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
 
-            // XHTML content for PDF - OPTIMIZED FOR SINGLE PAGE
+            // XHTML content
             StringBuilder html = new StringBuilder();
             html.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
             html.append("<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">");

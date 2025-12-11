@@ -81,6 +81,7 @@ public class ProductPerformance extends javax.swing.JPanel {
         try {
             updateSidePanel(fromDate, toDate, pro_name);
             updateLineChart(pro_name, fromDate, toDate);
+            updateTable(fromDate, toDate, pro_name);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -169,13 +170,52 @@ public class ProductPerformance extends javax.swing.JPanel {
                 totalRevenueLabel.setText("Rs. 0.00");
                 topRegionLabel.setText("No data");
             }
-            
-            //System.out.println("Side Panel - Product: " + pro_name + ", From: " + fromDate + ", To: " + toDate);
 
+            //System.out.println("Side Panel - Product: " + pro_name + ", From: " + fromDate + ", To: " + toDate);
         } catch (Exception e) {
             e.printStackTrace();
         }
 
+    }
+
+    // Update table data according to dates selected method
+    private void updateTable(String fromDate, String toDate, String pro_name) {
+        
+        try {
+            Connection con = db.getConnection();
+
+            String query = "SELECT date, qty, per_unit, region, total_price "
+                    + "FROM transactions "
+                    + "WHERE pro_name LIKE ? "
+                    + "AND STR_TO_DATE(date, '%m/%d/%Y') BETWEEN STR_TO_DATE(?, '%m/%d/%Y') AND STR_TO_DATE(?, '%m/%d/%Y')";
+
+            PreparedStatement pst = con.prepareStatement(query);
+            pst.setString(1, pro_name + "%");
+            pst.setString(2, fromDate);
+            pst.setString(3, toDate);
+
+            ResultSet rs = pst.executeQuery();
+
+            DefaultTableModel model = (DefaultTableModel) productTable.getModel();
+            model.setRowCount(0);
+
+            DecimalFormat df = new DecimalFormat("#,##0.00");
+
+            while (rs.next()) {
+                Object[] row = new Object[5];
+                row[0] = rs.getString("date");
+                row[1] = rs.getInt("qty");
+                row[2] = df.format(rs.getDouble("per_unit"));
+                row[3] = rs.getString("region");
+                row[4] = df.format(rs.getDouble("total_price"));
+
+                model.addRow(row);
+            }
+
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(null, "Error updating table: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     public Map<String, Double> getProductSalesOverTime(String productName, String fromDate, String toDate, boolean groupByMonth) {
@@ -311,7 +351,6 @@ public class ProductPerformance extends javax.swing.JPanel {
             // Range axis
             plot.getRangeAxis().setLabelFont(new Font("SansSerif", Font.PLAIN, 11));
 
-            // Make line thicker and colored
             CategoryItemRenderer renderer = plot.getRenderer();
             renderer.setSeriesPaint(0, Color.BLUE);
             ((LineAndShapeRenderer) renderer).setSeriesStroke(0, new BasicStroke(2.0f));
@@ -362,6 +401,206 @@ public class ProductPerformance extends javax.swing.JPanel {
         }
     }
 
+    public void generateReport(String fromDate, String toDate, String pro_name) {
+
+        Connection con = null;
+        PreparedStatement pst = null;
+        java.sql.ResultSet rs = null;
+
+        String totalSales = "";
+        String totalRevenue = "";
+        String topRegion = "";
+
+        try {
+            con = db.getConnection();
+
+            String query = "SELECT "
+                    + "SUM(qty) as total_sold, "
+                    + "SUM(total_price) as total_revenue, "
+                    + "(SELECT region FROM transactions "
+                    + " WHERE pro_name LIKE ? "
+                    + " AND STR_TO_DATE(date, '%m/%d/%Y') BETWEEN STR_TO_DATE(?, '%m/%d/%Y') AND STR_TO_DATE(?, '%m/%d/%Y') "
+                    + " GROUP BY region "
+                    + " ORDER BY SUM(qty) DESC "
+                    + " LIMIT 1) as top_region "
+                    + "FROM transactions "
+                    + "WHERE pro_name LIKE ? "
+                    + "AND STR_TO_DATE(date, '%m/%d/%Y') BETWEEN STR_TO_DATE(?, '%m/%d/%Y') AND STR_TO_DATE(?, '%m/%d/%Y')";
+
+            pst = con.prepareStatement(query);
+            pst.setString(1, pro_name + "%");
+            pst.setString(2, fromDate);
+            pst.setString(3, toDate);
+            pst.setString(4, pro_name + "%");
+            pst.setString(5, fromDate);
+            pst.setString(6, toDate);
+
+            rs = pst.executeQuery();
+
+            if (rs.next()) {
+                int qty = rs.getInt("total_sold");
+                totalSales = String.valueOf(qty);
+
+                double revenue = rs.getDouble("total_revenue");
+                DecimalFormat df = new DecimalFormat("#,##0.00");
+                totalRevenue = "Rs. " + df.format(revenue);
+
+                topRegion = rs.getString("top_region");
+                if (topRegion == null) {
+                    topRegion = "No data";
+                }
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        generatePDFReport(topRegion, totalRevenue, totalSales, pro_name);
+    }
+
+    private void generatePDFReport(String topRegion, String totalRevenue, String totalSales, String pro_name) {
+
+        OutputStream os = null;
+
+        try {
+
+            Date fromSelectedDate = dateFromChooser.getDate();
+            Date toSelectedDate = dateToChooser.getDate();
+            SimpleDateFormat displayFormat = new SimpleDateFormat("MMMM dd, yyyy");
+            SimpleDateFormat fileNameFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
+
+            // XHTML content
+            StringBuilder html = new StringBuilder();
+            html.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+            html.append("<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">");
+            html.append("<html xmlns=\"http://www.w3.org/1999/xhtml\">");
+            html.append("<head>");
+            html.append("<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\"/>");
+            html.append("<title>Regional Sales Report</title>");
+            html.append("<style type=\"text/css\">");
+            html.append("@page { size: A4; margin: 1.5cm; }");
+            html.append("body { font-family: Arial, sans-serif; margin: 15px; line-height: 1.4; font-size: 11px; }");
+            html.append("h1 { color: #2c3e50; text-align: center; margin-bottom: 8px; font-size: 18px; }");
+            html.append("h2 { color: #34495e; border-bottom: 1px solid #3498db; padding-bottom: 3px; margin-top: 15px; margin-bottom: 10px; font-size: 14px; }");
+            html.append(".report-info { text-align: center; color: #7f8c8d; margin-bottom: 10px; font-size: 10px; }");
+
+            // Summary rows
+            html.append(".summary-container { width: 100%; margin: 10px 0; }");
+            html.append(".summary-table { width: 100%; border-collapse: collapse; }");
+            html.append(".summary-card { padding: 10px; background: #f8f9fa; border: 1px solid #dee2e6; bor text-align: center; }");
+            html.append(".card-title { font-weight: bold; color: #495057; font-size: 10px; margin-bottom: 5px; }");
+            html.append(".card-value { font-size: 13px; color: #28a745; font-weight: bold; }");
+
+            html.append("table.data-table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 10px; }");
+            html.append("th { background-color: #3498db; color: white; padding: 8px; text-align: left; font-weight: bold; }");
+            html.append("td { padding: 6px; border: 1px solid #ddd; }");
+            html.append(".avoid-break { page-break-inside: avoid; }");
+            html.append("</style>");
+            html.append("</head>");
+            html.append("<body class=\"avoid-break\">");
+
+            // Report header
+            html.append("<h1>Product Performance Report</h1>");
+            html.append("<div class=\"report-info\">");
+
+            if (fromSelectedDate != null && toSelectedDate != null) {
+                html.append("<p><strong>Report Period:</strong> " + displayFormat.format(fromSelectedDate)
+                        + " to " + displayFormat.format(toSelectedDate) + "</p>");
+            } else {
+                html.append("<p><strong>Report Period:</strong> All Time</p>");
+            }
+
+            html.append("<p><strong>Generated On:</strong> " + displayFormat.format(new Date()) + "</p>");
+            html.append("</div>");
+
+            // Summary Cards - Using single row table
+            html.append("<h2>Product - ").append(pro_name).append("</h2>");
+            html.append("<div class=\"summary-container\">");
+            html.append("<table class=\"summary-table\">");
+            html.append("<tr>");
+            html.append("<td width=\"35%\"><div class=\"summary-card\"><div class=\"card-title\">Total Sales</div><div class=\"card-value\">").append(totalSales).append("</div></div></td>");
+            html.append("<td width=\"35%\"><div class=\"summary-card\"><div class=\"card-title\">Total Revenue</div><div class=\"card-value\">").append(totalRevenue).append("</div></div></td>");
+            html.append("<td width=\"35%\"><div class=\"summary-card\"><div class=\"card-title\">Top Region of Product</div><div class=\"card-value\">").append(topRegion).append("</div></div></td>");
+            html.append("</tr>");
+            html.append("</table>");
+            html.append("</div>");
+
+            // Table Data
+            html.append("<h2>Regional Sales Data</h2>");
+            html.append("<table class=\"data-table\">");
+            html.append("<tr><th>Date</th><th>Quantity</th><th>Per Unit</th><th>Region</th><th>Total Sales (Rs.)</th></tr>");
+
+            DefaultTableModel model = (DefaultTableModel) productTable.getModel();
+
+            for (int row = 0; row < model.getRowCount(); row++) {
+                html.append("<tr>");
+                for (int col = 0; col < model.getColumnCount(); col++) {
+                    Object value = model.getValueAt(row, col);
+                    String cellValue = value != null ? value.toString() : "";
+
+                    cellValue = cellValue.replace("&", "&amp;")
+                            .replace("<", "&lt;")
+                            .replace(">", "&gt;")
+                            .replace("\"", "&quot;")
+                            .replace("'", "&apos;");
+
+                    html.append("<td>").append(cellValue).append("</td>");
+                }
+                html.append("</tr>");
+            }
+
+            html.append("</table>");
+
+            html.append("</body>");
+            html.append("</html>");
+
+            // Save PDF file
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setDialogTitle("Save PDF Report");
+            String defaultFileName = "Product_Performance_Report_" + fileNameFormat.format(new Date()) + ".pdf";
+            fileChooser.setSelectedFile(new File(defaultFileName));
+
+            if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+                File file = fileChooser.getSelectedFile();
+
+                // Ensure .pdf extension
+                if (!file.getName().toLowerCase().endsWith(".pdf")) {
+                    file = new File(file.getAbsolutePath() + ".pdf");
+                }
+
+                // Create PDF from HTML
+                os = new FileOutputStream(file);
+                ITextRenderer renderer = new ITextRenderer();
+
+                // Set document with HTML content
+                renderer.setDocumentFromString(html.toString());
+                renderer.layout();
+                renderer.createPDF(os);
+
+                os.close();
+
+                JOptionPane.showMessageDialog(this, "PDF report generated successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+
+                // Open the PDF after generating
+                if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
+                    Desktop.getDesktop().open(file);
+                }
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Error generating PDF: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        } finally {
+            if (os != null) {
+                try {
+                    os.close();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -378,7 +617,7 @@ public class ProductPerformance extends javax.swing.JPanel {
         barChartPanel = new javax.swing.JPanel();
         jPanel2 = new javax.swing.JPanel();
         jScrollPane1 = new javax.swing.JScrollPane();
-        regionalTable = new javax.swing.JTable();
+        productTable = new javax.swing.JTable();
         jLabel10 = new javax.swing.JLabel();
         generateReportBtn = new javax.swing.JButton();
         refreshBtn = new javax.swing.JButton();
@@ -443,44 +682,45 @@ public class ProductPerformance extends javax.swing.JPanel {
 
         jTabbedPane1.addTab("Chart View 1", jPanel3);
 
-        regionalTable.setModel(new javax.swing.table.DefaultTableModel(
+        productTable.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
 
             },
             new String [] {
-                "Region", "Total Sales", "Transactions", "Average Sales"
+                "Date", "Quantity", "Per Unit", "Region", "Total Price"
             }
         ) {
             boolean[] canEdit = new boolean [] {
-                false, false, false, false
+                false, false, false, false, false
             };
 
             public boolean isCellEditable(int rowIndex, int columnIndex) {
                 return canEdit [columnIndex];
             }
         });
-        jScrollPane1.setViewportView(regionalTable);
-        if (regionalTable.getColumnModel().getColumnCount() > 0) {
-            regionalTable.getColumnModel().getColumn(0).setResizable(false);
-            regionalTable.getColumnModel().getColumn(1).setResizable(false);
-            regionalTable.getColumnModel().getColumn(2).setResizable(false);
-            regionalTable.getColumnModel().getColumn(3).setResizable(false);
+        jScrollPane1.setViewportView(productTable);
+        if (productTable.getColumnModel().getColumnCount() > 0) {
+            productTable.getColumnModel().getColumn(0).setResizable(false);
+            productTable.getColumnModel().getColumn(1).setResizable(false);
+            productTable.getColumnModel().getColumn(2).setResizable(false);
+            productTable.getColumnModel().getColumn(3).setResizable(false);
+            productTable.getColumnModel().getColumn(4).setResizable(false);
         }
 
         jLabel10.setFont(new java.awt.Font("Segoe UI", 0, 16)); // NOI18N
         jLabel10.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-        jLabel10.setText("Regional Sales Data");
+        jLabel10.setText("Product Performance");
 
         javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
         jPanel2.setLayout(jPanel2Layout);
         jPanel2Layout.setHorizontalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel2Layout.createSequentialGroup()
-                .addContainerGap()
+                .addGap(21, 21, 21)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 529, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel10, javax.swing.GroupLayout.PREFERRED_SIZE, 183, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(28, Short.MAX_VALUE))
+                    .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 525, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel10, javax.swing.GroupLayout.PREFERRED_SIZE, 196, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(0, 23, Short.MAX_VALUE))
         );
         jPanel2Layout.setVerticalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -488,8 +728,8 @@ public class ProductPerformance extends javax.swing.JPanel {
                 .addGap(7, 7, 7)
                 .addComponent(jLabel10, javax.swing.GroupLayout.PREFERRED_SIZE, 31, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 119, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(278, Short.MAX_VALUE))
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 372, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(25, Short.MAX_VALUE))
         );
 
         jTabbedPane1.addTab("Table View", jPanel2);
@@ -757,6 +997,22 @@ public class ProductPerformance extends javax.swing.JPanel {
 
     private void generateReportBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_generateReportBtnActionPerformed
 
+        Date fromSelectedDate = dateFromChooser.getDate();
+        Date toSelectedDate = dateToChooser.getDate();
+        String pro_name = (String) productComboBox.getSelectedItem();
+
+        if (fromSelectedDate == null || toSelectedDate == null) {
+            JOptionPane.showMessageDialog(this, "Select dates to analyze", "Date Required", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        SimpleDateFormat dbFormat = new SimpleDateFormat("MM/dd/yyyy");
+        String fromDate = dbFormat.format(fromSelectedDate);
+        String toDate = dbFormat.format(toSelectedDate);
+
+        // Generate the report
+        generateReport(fromDate, toDate, pro_name);
+
     }//GEN-LAST:event_generateReportBtnActionPerformed
 
     private void resetBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_resetBtnActionPerformed
@@ -795,8 +1051,8 @@ public class ProductPerformance extends javax.swing.JPanel {
     private javax.swing.JSeparator jSeparator1;
     private javax.swing.JTabbedPane jTabbedPane1;
     private javax.swing.JComboBox<String> productComboBox;
+    private javax.swing.JTable productTable;
     private javax.swing.JButton refreshBtn;
-    private javax.swing.JTable regionalTable;
     private javax.swing.JButton resetBtn;
     private javax.swing.JLabel topRegionLabel;
     private javax.swing.JLabel totalRevenueLabel;

@@ -18,7 +18,12 @@ import java.util.Map;
 import java.sql.ResultSet;
 import javax.swing.JOptionPane;
 import com.toedter.calendar.JDateChooser;
+import java.awt.BasicStroke;
+import java.awt.Color;
 import java.awt.Desktop;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.geom.Ellipse2D;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
@@ -30,8 +35,17 @@ import java.nio.file.Files;
 import java.sql.Statement;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import javax.swing.JComboBox;
+import org.jfree.chart.axis.CategoryAxis;
+import org.jfree.chart.axis.CategoryLabelPositions;
+import org.jfree.chart.plot.CategoryPlot;
+import org.jfree.chart.plot.PlotOrientation;
+import org.jfree.chart.renderer.category.CategoryItemRenderer;
+import org.jfree.chart.renderer.category.LineAndShapeRenderer;
 import org.xhtmlrenderer.pdf.ITextRenderer;
+import java.util.List;
 
 /**
  *
@@ -66,6 +80,7 @@ public class ProductPerformance extends javax.swing.JPanel {
 
         try {
             updateSidePanel(fromDate, toDate, pro_name);
+            updateLineChart(pro_name, fromDate, toDate);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -73,7 +88,7 @@ public class ProductPerformance extends javax.swing.JPanel {
 
     //  Load products to combo box    
     public void loadProductsToComboBox(JComboBox<String> productComboBox) {
-        
+
         Connection con = null;
         PreparedStatement pst = null;
         ResultSet rs = null;
@@ -81,10 +96,12 @@ public class ProductPerformance extends javax.swing.JPanel {
         try {
             con = db.getConnection();
 
-            // Get distinct product names
+            // Get product names
             String query = "SELECT DISTINCT pro_name FROM transactions ORDER BY pro_name";
             pst = con.prepareStatement(query);
             rs = pst.executeQuery();
+
+            productComboBox.removeAllItems();
 
             productComboBox.addItem("-- Select Product --");
 
@@ -98,7 +115,7 @@ public class ProductPerformance extends javax.swing.JPanel {
             e.printStackTrace();
             JOptionPane.showMessageDialog(null, "Error loading products: " + e.getMessage());
         }
-        
+
     }
 
     //  Method to update the side panel according to selected date range    
@@ -133,16 +150,14 @@ public class ProductPerformance extends javax.swing.JPanel {
             rs = pst.executeQuery();
 
             if (rs.next()) {
-                // 1. Total Sold
+
                 int totalSold = rs.getInt("total_sold");
                 totalSoldLabel.setText(String.valueOf(totalSold));
 
-                // 2. Total Revenue
                 double totalRevenue = rs.getDouble("total_revenue");
                 DecimalFormat df = new DecimalFormat("#,##0.00");
                 totalRevenueLabel.setText("Rs. " + df.format(totalRevenue));
 
-                // 3. Top Region
                 String topRegion = rs.getString("top_region");
                 if (topRegion != null) {
                     topRegionLabel.setText(topRegion);
@@ -154,11 +169,197 @@ public class ProductPerformance extends javax.swing.JPanel {
                 totalRevenueLabel.setText("Rs. 0.00");
                 topRegionLabel.setText("No data");
             }
+            
+            //System.out.println("Side Panel - Product: " + pro_name + ", From: " + fromDate + ", To: " + toDate);
 
         } catch (Exception e) {
             e.printStackTrace();
         }
 
+    }
+
+    public Map<String, Double> getProductSalesOverTime(String productName, String fromDate, String toDate, boolean groupByMonth) {
+        Map<String, Double> salesData = new HashMap<>();
+
+        Connection con = null;
+        PreparedStatement pst = null;
+        ResultSet rs = null;
+
+        try {
+            con = db.getConnection();
+
+            String query;
+            if (groupByMonth) {
+                // Group by monthly (for > 12 months)
+                query = "SELECT "
+                        + "DATE_FORMAT(STR_TO_DATE(date, '%m/%d/%Y'), '%Y-%m') as month, "
+                        + "SUM(qty) as total_qty, "
+                        + "SUM(total_price) as total_revenue "
+                        + "FROM transactions "
+                        + "WHERE pro_name LIKE ? "
+                        + "AND STR_TO_DATE(date, '%m/%d/%Y') BETWEEN STR_TO_DATE(?, '%m/%d/%Y') AND STR_TO_DATE(?, '%m/%d/%Y') "
+                        + "GROUP BY DATE_FORMAT(STR_TO_DATE(date, '%m/%d/%Y'), '%Y-%m') "
+                        + "ORDER BY month";
+            } else {
+                // Group weekly (for < 12 months)
+                query = "SELECT "
+                        + "CONCAT(YEAR(STR_TO_DATE(date, '%m/%d/%Y')), '-W', "
+                        + "LPAD(WEEK(STR_TO_DATE(date, '%m/%d/%Y')), 2, '0')) as week, "
+                        + "SUM(qty) as total_qty, "
+                        + "SUM(total_price) as total_revenue "
+                        + "FROM transactions "
+                        + "WHERE pro_name LIKE ? "
+                        + "AND STR_TO_DATE(date, '%m/%d/%Y') BETWEEN STR_TO_DATE(?, '%m/%d/%Y') AND STR_TO_DATE(?, '%m/%d/%Y') "
+                        + "GROUP BY YEAR(STR_TO_DATE(date, '%m/%d/%Y')), WEEK(STR_TO_DATE(date, '%m/%d/%Y')) "
+                        + "ORDER BY week";
+            }
+
+            pst = con.prepareStatement(query);
+            pst.setString(1, productName + "%");
+            pst.setString(2, fromDate);
+            pst.setString(3, toDate);
+
+            rs = pst.executeQuery();
+
+            while (rs.next()) {
+                String timePeriod;
+                if (groupByMonth) {
+                    timePeriod = rs.getString("month");
+                } else {
+                    timePeriod = rs.getString("week");
+                }
+                double quantity = rs.getDouble("total_qty");
+                salesData.put(timePeriod, quantity);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return salesData;
+    }
+
+    // Line charttt for product performance over time
+    private void updateLineChart(String productName, String fromDate, String toDate) {
+
+        try {
+            // Calculate if period is more than 12 months
+            SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy");
+            Date startDate = sdf.parse(fromDate);
+            Date endDate = sdf.parse(toDate);
+
+            long diffInMillies = Math.abs(endDate.getTime() - startDate.getTime());
+            long diffInDays = diffInMillies / (1000 * 60 * 60 * 24);
+            long diffInMonths = diffInDays / 30;
+
+            boolean groupByMonth = diffInMonths > 12;
+
+            // Fetch data with grouping
+            Map<String, Double> data = getProductSalesOverTime(productName, fromDate, toDate, groupByMonth);
+
+            // Create dataset for line chart
+            DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+
+            // Sort keys
+            List<String> sortedPeriods = new ArrayList<>(data.keySet());
+            Collections.sort(sortedPeriods);
+
+            // Add sorted data to dataset
+            for (String period : sortedPeriods) {
+                Double value = data.get(period);
+                String displayLabel = formatTimePeriod(period, groupByMonth);
+                dataset.addValue(value, "Quantity Sold", displayLabel);
+            }
+
+            // Create line chart with title
+            String chartTitle;
+            if (groupByMonth) {
+                chartTitle = productName + " - Monthly Sales";
+            } else {
+                chartTitle = productName + " - Weekly Sales";
+            }
+
+            JFreeChart lineChart = ChartFactory.createLineChart(
+                    chartTitle,
+                    groupByMonth ? "Month" : "Week",
+                    "Quantity Sold",
+                    dataset,
+                    PlotOrientation.VERTICAL,
+                    true, true, false
+            );
+
+            // Customize chart appearance
+            lineChart.getTitle().setFont(new Font("SansSerif", Font.BOLD, 14));
+            CategoryPlot plot = lineChart.getCategoryPlot();
+
+            CategoryAxis domainAxis = plot.getDomainAxis();
+            domainAxis.setLabelFont(new Font("SansSerif", Font.PLAIN, 11));
+            domainAxis.setCategoryLabelPositions(CategoryLabelPositions.UP_45);
+
+            // Adjust label density based on data points
+            if (data.size() > 20) {
+                domainAxis.setTickLabelFont(new Font("SansSerif", Font.PLAIN, 8));
+                domainAxis.setMaximumCategoryLabelLines(3);
+            } else {
+                domainAxis.setTickLabelFont(new Font("SansSerif", Font.PLAIN, 9));
+            }
+
+            // Adjust margins
+            domainAxis.setLowerMargin(0.02);
+            domainAxis.setUpperMargin(0.02);
+
+            // Range axis
+            plot.getRangeAxis().setLabelFont(new Font("SansSerif", Font.PLAIN, 11));
+
+            // Make line thicker and colored
+            CategoryItemRenderer renderer = plot.getRenderer();
+            renderer.setSeriesPaint(0, Color.BLUE);
+            ((LineAndShapeRenderer) renderer).setSeriesStroke(0, new BasicStroke(2.0f));
+
+            // Add data points
+            ((LineAndShapeRenderer) renderer).setSeriesShapesVisible(0, true);
+            ((LineAndShapeRenderer) renderer).setSeriesShape(0, new Ellipse2D.Double(-3, -3, 6, 6));
+
+            // Create chart panel
+            ChartPanel chartPanel = new ChartPanel(lineChart);
+            chartPanel.setPreferredSize(new Dimension(560, 350));
+            chartPanel.setMaximumDrawWidth(2000);
+            chartPanel.setMaximumDrawHeight(2000);
+            chartPanel.setMouseWheelEnabled(true);
+
+            // Update the panel
+            barChartPanel.removeAll();
+            barChartPanel.setLayout(new BorderLayout());
+            barChartPanel.add(chartPanel, BorderLayout.CENTER);
+            barChartPanel.revalidate();
+            barChartPanel.repaint();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(null, "Error creating chart: " + e.getMessage());
+        }
+    }
+
+    // New helper method for date formatting
+    private String formatTimePeriod(String period, boolean isMonthly) {
+        try {
+            if (isMonthly) {
+                SimpleDateFormat inputFormat = new SimpleDateFormat("yyyy-MM");
+                SimpleDateFormat outputFormat = new SimpleDateFormat("MMM yyyy");
+                Date date = inputFormat.parse(period);
+                return outputFormat.format(date);
+            } else {
+                if (period.contains("-W")) {
+                    String[] parts = period.split("-W");
+                    if (parts.length == 2) {
+                        return "Week " + parts[1] + ", " + parts[0];
+                    }
+                }
+                return period;
+            }
+        } catch (Exception e) {
+            return period;
+        }
     }
 
     /**
@@ -175,8 +376,6 @@ public class ProductPerformance extends javax.swing.JPanel {
         jTabbedPane1 = new javax.swing.JTabbedPane();
         jPanel3 = new javax.swing.JPanel();
         barChartPanel = new javax.swing.JPanel();
-        jPanel4 = new javax.swing.JPanel();
-        pieChartPanel = new javax.swing.JPanel();
         jPanel2 = new javax.swing.JPanel();
         jScrollPane1 = new javax.swing.JScrollPane();
         regionalTable = new javax.swing.JTable();
@@ -218,7 +417,7 @@ public class ProductPerformance extends javax.swing.JPanel {
         barChartPanel.setLayout(barChartPanelLayout);
         barChartPanelLayout.setHorizontalGroup(
             barChartPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 540, Short.MAX_VALUE)
+            .addGap(0, 550, Short.MAX_VALUE)
         );
         barChartPanelLayout.setVerticalGroup(
             barChartPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -232,7 +431,7 @@ public class ProductPerformance extends javax.swing.JPanel {
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel3Layout.createSequentialGroup()
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(barChartPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(307, 307, 307))
+                .addGap(297, 297, 297))
         );
         jPanel3Layout.setVerticalGroup(
             jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -243,38 +442,6 @@ public class ProductPerformance extends javax.swing.JPanel {
         );
 
         jTabbedPane1.addTab("Chart View 1", jPanel3);
-
-        pieChartPanel.setBackground(new java.awt.Color(255, 255, 255));
-
-        javax.swing.GroupLayout pieChartPanelLayout = new javax.swing.GroupLayout(pieChartPanel);
-        pieChartPanel.setLayout(pieChartPanelLayout);
-        pieChartPanelLayout.setHorizontalGroup(
-            pieChartPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 550, Short.MAX_VALUE)
-        );
-        pieChartPanelLayout.setVerticalGroup(
-            pieChartPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 416, Short.MAX_VALUE)
-        );
-
-        javax.swing.GroupLayout jPanel4Layout = new javax.swing.GroupLayout(jPanel4);
-        jPanel4.setLayout(jPanel4Layout);
-        jPanel4Layout.setHorizontalGroup(
-            jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel4Layout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(pieChartPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-        );
-        jPanel4Layout.setVerticalGroup(
-            jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel4Layout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(pieChartPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addContainerGap())
-        );
-
-        jTabbedPane1.addTab("Chart View 2", jPanel4);
 
         regionalTable.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
@@ -313,7 +480,7 @@ public class ProductPerformance extends javax.swing.JPanel {
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 529, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel10, javax.swing.GroupLayout.PREFERRED_SIZE, 183, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(21, Short.MAX_VALUE))
+                .addContainerGap(28, Short.MAX_VALUE))
         );
         jPanel2Layout.setVerticalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -431,7 +598,7 @@ public class ProductPerformance extends javax.swing.JPanel {
             jPanel13Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel13Layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(topRegionLabel, javax.swing.GroupLayout.DEFAULT_SIZE, 189, Short.MAX_VALUE)
+                .addComponent(topRegionLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addContainerGap())
         );
         jPanel13Layout.setVerticalGroup(
@@ -456,10 +623,10 @@ public class ProductPerformance extends javax.swing.JPanel {
                         .addComponent(jLabel16, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.PREFERRED_SIZE, 185, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addComponent(jPanel12, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addComponent(jPanel13, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addComponent(jLabel18, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
+                        .addComponent(jLabel18, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 213, Short.MAX_VALUE)))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(jPanel7, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(19, Short.MAX_VALUE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         jPanel5Layout.setVerticalGroup(
             jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -531,16 +698,16 @@ public class ProductPerformance extends javax.swing.JPanel {
                             .addComponent(dateToChooser, javax.swing.GroupLayout.PREFERRED_SIZE, 153, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addComponent(jSeparator1, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.PREFERRED_SIZE, 848, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(jPanel1Layout.createSequentialGroup()
-                        .addComponent(jTabbedPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 567, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(18, 18, 18)
-                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
-                                .addComponent(refreshBtn, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(jTabbedPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 574, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(21, 21, 21)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(jPanel1Layout.createSequentialGroup()
+                                .addComponent(refreshBtn, javax.swing.GroupLayout.PREFERRED_SIZE, 108, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(generateReportBtn, javax.swing.GroupLayout.PREFERRED_SIZE, 158, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addGap(3, 3, 3))
-                            .addComponent(resetBtn, javax.swing.GroupLayout.PREFERRED_SIZE, 272, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(jPanel5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                                .addComponent(generateReportBtn))
+                            .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                .addComponent(jPanel5, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addComponent(resetBtn, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))))
                 .addContainerGap(24, Short.MAX_VALUE))
         );
         jPanel1Layout.setVerticalGroup(
@@ -588,7 +755,6 @@ public class ProductPerformance extends javax.swing.JPanel {
         dataAnalysis();
     }//GEN-LAST:event_refreshBtnActionPerformed
 
-    //  Generate report button    
     private void generateReportBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_generateReportBtnActionPerformed
 
     }//GEN-LAST:event_generateReportBtnActionPerformed
@@ -622,14 +788,12 @@ public class ProductPerformance extends javax.swing.JPanel {
     private javax.swing.JPanel jPanel13;
     private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel3;
-    private javax.swing.JPanel jPanel4;
     private javax.swing.JPanel jPanel5;
     private javax.swing.JPanel jPanel7;
     private javax.swing.JPanel jPanel8;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JSeparator jSeparator1;
     private javax.swing.JTabbedPane jTabbedPane1;
-    private javax.swing.JPanel pieChartPanel;
     private javax.swing.JComboBox<String> productComboBox;
     private javax.swing.JButton refreshBtn;
     private javax.swing.JTable regionalTable;

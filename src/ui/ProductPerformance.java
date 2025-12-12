@@ -1011,12 +1011,19 @@ public class ProductPerformance extends javax.swing.JPanel {
         String toDate = dbFormat.format(toSelectedDate);
 
         // Generate the report
+        updateTable(fromDate, toDate, pro_name);
         generateReport(fromDate, toDate, pro_name);
 
     }//GEN-LAST:event_generateReportBtnActionPerformed
 
     private void resetBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_resetBtnActionPerformed
 
+        totalSoldLabel.setText("");
+        totalRevenueLabel.setText("");
+        topRegionLabel.setText("");
+        dateFromChooser.setDate(null);
+        dateToChooser.setDate(null);
+        
     }//GEN-LAST:event_resetBtnActionPerformed
 
     private void productComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_productComboBoxActionPerformed

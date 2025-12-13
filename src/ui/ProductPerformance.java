@@ -563,7 +563,6 @@ public class ProductPerformance extends javax.swing.JPanel {
             if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
                 File file = fileChooser.getSelectedFile();
 
-                // Ensure .pdf extension
                 if (!file.getName().toLowerCase().endsWith(".pdf")) {
                     file = new File(file.getAbsolutePath() + ".pdf");
                 }
@@ -1001,6 +1000,11 @@ public class ProductPerformance extends javax.swing.JPanel {
         Date toSelectedDate = dateToChooser.getDate();
         String pro_name = (String) productComboBox.getSelectedItem();
 
+        if (productComboBox.getSelectedItem() == "-- Select Product --" ) {
+            JOptionPane.showMessageDialog(this, "Select product to analyze", "Product Required", JOptionPane.WARNING_MESSAGE);
+            return;
+        } 
+        
         if (fromSelectedDate == null || toSelectedDate == null) {
             JOptionPane.showMessageDialog(this, "Select dates to analyze", "Date Required", JOptionPane.WARNING_MESSAGE);
             return;

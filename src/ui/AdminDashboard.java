@@ -119,6 +119,11 @@ public class AdminDashboard extends javax.swing.JFrame {
         jButton6.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
         jButton6.setForeground(new java.awt.Color(13, 42, 171));
         jButton6.setText("Customer Behavior");
+        jButton6.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton6ActionPerformed(evt);
+            }
+        });
 
         regionalSalesBtn.setBackground(new java.awt.Color(241, 241, 255));
         regionalSalesBtn.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
@@ -277,6 +282,13 @@ public class AdminDashboard extends javax.swing.JFrame {
         jpload.jPanelLoader(PanelDashboard, pro);
         
     }//GEN-LAST:event_jButton3ActionPerformed
+
+    private void jButton6ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton6ActionPerformed
+        
+        CustomerBehavior pro = new CustomerBehavior();
+        jpload.jPanelLoader(PanelDashboard, pro);
+        
+    }//GEN-LAST:event_jButton6ActionPerformed
 
     /**
      * @param args the command line arguments

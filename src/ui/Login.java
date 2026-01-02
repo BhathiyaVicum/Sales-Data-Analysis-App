@@ -1,6 +1,10 @@
 package ui;
-import com.formdev.flatlaf.FlatLightLaf;
 
+import com.formdev.flatlaf.FlatLightLaf;
+import db.db;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import javax.swing.JOptionPane;
 
 /**
  *
@@ -17,6 +21,64 @@ public class Login extends javax.swing.JFrame {
         setLocationRelativeTo(null);
         //jPanel2.setBorder(new RoundedBorder(25, new java.awt.Color(0, 125, 255), 2));
         //this.setExtendedState(login.MAXIMIZED_BOTH);
+    }
+
+    JpanelLoader jpload = new JpanelLoader();
+
+    public void creadentialsCheck() {
+
+        String username = txtUsername.getText();
+        String accesscode = txtPassword.getText();
+
+        if (username == null || accesscode == null) {
+            JOptionPane.showMessageDialog(this, "Please enter your name and password", "Login Error", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        Connection con = null;
+        PreparedStatement pst = null;
+        java.sql.ResultSet rs = null;
+
+        try {
+            con = db.getConnection();
+
+            String query = "SELECT role, access_code FROM user WHERE user_name = ?";
+            pst = con.prepareStatement(query);
+            pst.setString(1, username);
+            rs = pst.executeQuery();
+
+            if (rs.next()) {
+
+                String dbAccessCode = rs.getString("access_code");
+                String role = rs.getString("role");
+
+                //System.out.println(role);
+                if (accesscode.equals(dbAccessCode)) {
+
+                    switch (role.toLowerCase()) {
+                        case "admin":
+                            AdminDashboard dashboard1 = new AdminDashboard();
+                            dashboard1.setVisible(true);
+                            this.dispose();
+                            break;
+                        case "manager":
+                            ManagerDashboard dashboard2 = new ManagerDashboard();
+                            dashboard2.setVisible(true);
+                            this.dispose();
+                            break;
+                        default:
+                            JOptionPane.showMessageDialog(this, "Unauthorized role");
+                            break;
+                    }
+
+                }
+            } else {
+                System.out.println("User not found");
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
     }
 
@@ -120,7 +182,7 @@ public class Login extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void btnLoginActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnLoginActionPerformed
-        // TODO add your handling code here:
+        creadentialsCheck();
     }//GEN-LAST:event_btnLoginActionPerformed
 
     /**
@@ -133,8 +195,8 @@ public class Login extends javax.swing.JFrame {
          * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
          */
         try {
-        FlatLightLaf.setup(); // You can change to FlatDarkLaf, etc.
-        // Optional: customize a few UI properties
+            FlatLightLaf.setup(); // You can change to FlatDarkLaf, etc.
+            // Optional: customize a few UI properties
             javax.swing.UIManager.put("Button.arc", 20);
             javax.swing.UIManager.put("Component.focusWidth", 1);
             javax.swing.UIManager.put("TextComponent.arc", 15);

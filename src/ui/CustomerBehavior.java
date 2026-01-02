@@ -27,6 +27,8 @@ import java.util.Date;
 import javax.swing.JFileChooser;
 import javax.swing.table.DefaultTableModel;
 import java.nio.file.Files;
+import java.sql.SQLException;
+import java.text.DecimalFormat;
 import org.xhtmlrenderer.pdf.ITextRenderer;
 
 /**
@@ -40,131 +42,221 @@ public class CustomerBehavior extends javax.swing.JPanel {
      */
     public CustomerBehavior() {
         initComponents();
-        createBarChart();
-        createPieChart();
-        loadTable();
         loadComboBox();
     }
 
-    //  Data analysis method (When date choosen and refresh button click)
-    public void dataAnalysis() {
-
-        Date fromSelectedDate = dateFromChooser.getDate();
-        Date toSelectedDate = dateToChooser.getDate();
-
-        // Check if dates are selected
-        if (fromSelectedDate == null || toSelectedDate == null) {
-            JOptionPane.showMessageDialog(this, "Select dates to analyze", "Date Required", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-
-        SimpleDateFormat dbDateFormat = new SimpleDateFormat("MM/dd/yyyy");
-        String fromDate = dbDateFormat.format(fromSelectedDate);
-        String toDate = dbDateFormat.format(toSelectedDate);
-
-        System.out.println("From Date: " + fromDate);
-        System.out.println("To Date: " + toDate);
-
-        try {
-            updatePieChart(fromDate, toDate);
-            updateBarChart(fromDate, toDate);
-            updateTable(fromDate, toDate);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
     public void loadComboBox() {
-        
+
         analysisComboBox.removeAllItems();
         analysisComboBox.addItem("-- Select Analysis Type --");
         analysisComboBox.addItem("Frequently Bought Together");
         analysisComboBox.addItem("Day of Week Patterns");
         analysisComboBox.addItem("Monthly Trends");
-    
+
     }
 
-    // Load table data method
-    private void loadTable() {
+    //  Data analysis method (When date choosen and refresh button click)
+    public void dataAnalysis() {
 
-        try {
-            Connection con = db.getConnection();
+        // Get selected analysis type
+        String analysisType = (String) analysisComboBox.getSelectedItem();
 
-            String query
-                    = "SELECT region, "
-                    + "SUM(total_price) AS total_sales, "
-                    + "COUNT(*) AS transactions, "
-                    + "AVG(total_price) AS average_sales "
-                    + "FROM transactions "
-                    + "GROUP BY region";
-
-            PreparedStatement pst = con.prepareStatement(query);
-
-            ResultSet rs = pst.executeQuery();
-
-            DefaultTableModel model = (DefaultTableModel) regionalTable.getModel();
-
-            while (rs.next()) {
-
-                Object[] row = new Object[4];
-                row[0] = rs.getString("region");
-                row[1] = rs.getDouble("total_sales");
-                row[2] = rs.getInt("transactions");
-                row[3] = rs.getDouble("average_sales");
-
-                model.addRow(row);
-            }
-
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(null, e);
+        // Validate selection
+        if (analysisType == null || analysisType.equals("-- Select Analysis Type --")) {
+            JOptionPane.showMessageDialog(this, "Please select an analysis type", "Selection Required", JOptionPane.WARNING_MESSAGE);
+            return;
         }
-    }
 
-    // Update table data according to dates selected method
-    private void updateTable(String fromDate, String toDate) {
+        // Get dates
+        Date fromSelectedDate = dateFromChooser.getDate();
+        Date toSelectedDate = dateToChooser.getDate();
+
+        if (fromSelectedDate == null || toSelectedDate == null) {
+            JOptionPane.showMessageDialog(this, "Please select both From and To dates", "Date Required", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        // Format dates
+        SimpleDateFormat dbFormat = new SimpleDateFormat("MM/dd/yyyy");
+        String fromDate = dbFormat.format(fromSelectedDate);
+        String toDate = dbFormat.format(toSelectedDate);
 
         try {
-            Connection con = db.getConnection();
+            switch (analysisType) {
+                case "Frequently Bought Together":
+                    analyzeFrequentlyBoughtTogether(fromDate, toDate);
+                    analyzePairsAnalyticsHeadings();
+                    break;
 
-            String query
-                    = "SELECT region, "
-                    + "SUM(total_price) AS total_sales, "
-                    + "COUNT(*) AS transactions, "
-                    + "AVG(total_price) AS average_sales "
-                    + "FROM transactions "
-                    + "WHERE STR_TO_DATE(date, '%m/%d/%Y') BETWEEN STR_TO_DATE(?, '%m/%d/%Y') "
-                    + "AND STR_TO_DATE(?, '%m/%d/%Y') "
-                    + "GROUP BY region";
+                case "Day of Week Patterns":
+                    analyzeDayOfWeekPatterns(fromDate, toDate);
+                    analyzeDayAnalyticsHeadings();
+                    break;
 
-            PreparedStatement pst = con.prepareStatement(query);
-            pst.setString(1, fromDate);
-            pst.setString(2, toDate);
+                case "Monthly Trends":
+                    //analyzeMonthlyTrends(fromDate, toDate);
+                    break;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Error during analysis: " + e.getMessage(), "Analysis Error", JOptionPane.ERROR_MESSAGE);
+        }
 
-            ResultSet rs = pst.executeQuery();
+    }
 
-            DefaultTableModel model = (DefaultTableModel) regionalTable.getModel();
+    private void analyzeFrequentlyBoughtTogether(String fromDate, String toDate) {
+        Connection con = null;
+        PreparedStatement pst = null;
+        ResultSet rs = null;
+
+        try {
+            con = db.getConnection();
+
+            // IMPORTANT: Convert dates to match your database format (M/d/yyyy)
+            SimpleDateFormat uiFormat = new SimpleDateFormat("MM/dd/yyyy");
+            SimpleDateFormat dbFormat = new SimpleDateFormat("M/d/yyyy");
+
+            Date from = uiFormat.parse(fromDate);
+            Date to = uiFormat.parse(toDate);
+
+            String dbFromDate = dbFormat.format(from);
+            String dbToDate = dbFormat.format(to);
+
+            System.out.println("DEBUG: Searching from " + dbFromDate + " to " + dbToDate);
+
+            // Find products bought by same customer on the same day
+            String query = "SELECT "
+                    + "t1.pro_name as product1, "
+                    + "t2.pro_name as product2, "
+                    + "COUNT(*) as frequency "
+                    + "FROM transactions t1 "
+                    + "JOIN transactions t2 ON t1.cus_id = t2.cus_id "
+                    + "AND t1.date = t2.date " // Same date
+                    + "AND t1.pro_id < t2.pro_id " // Avoid duplicates
+                    + "WHERE t1.date >= ? AND t1.date <= ? " // String comparison
+                    + "AND t2.date >= ? AND t2.date <= ? "
+                    + "GROUP BY t1.pro_name, t2.pro_name "
+                    + "HAVING COUNT(*) >= 1 "
+                    + "ORDER BY frequency DESC "
+                    + "LIMIT 20";
+
+            pst = con.prepareStatement(query);
+            pst.setString(1, dbFromDate);
+            pst.setString(2, dbToDate);
+            pst.setString(3, dbFromDate);
+            pst.setString(4, dbToDate);
+
+            rs = pst.executeQuery();
+
+            // Update data table
+            DefaultTableModel model = (DefaultTableModel) dataTable.getModel();
             model.setRowCount(0);
+            model.setColumnIdentifiers(new String[]{"Rank", "Product 1", "Product 2", "Frequency"});
+
+            int rank = 1;
+            int totalPairs = 0;
+            String topProduct1 = "", topProduct2 = "";
+            int topFrequency = 0;
 
             while (rs.next()) {
+                String product1 = rs.getString("product1");
+                String product2 = rs.getString("product2");
+                int frequency = rs.getInt("frequency");
 
                 Object[] row = new Object[4];
-                row[0] = rs.getString("region");
-                row[1] = rs.getDouble("total_sales");
-                row[2] = rs.getInt("transactions");
-                row[3] = String.format("%,.2f", rs.getDouble("average_sales"));
+                row[0] = rank++;
+                row[1] = product1;
+                row[2] = product2;
+                row[3] = frequency + " time(s)";
 
                 model.addRow(row);
+                totalPairs++;
+
+                if (frequency > topFrequency) {
+                    topFrequency = frequency;
+                    topProduct1 = product1;
+                    topProduct2 = product2;
+                }
+
+                System.out.println("DEBUG: Found pair - " + product1 + " + " + product2 + " = " + frequency);
+            }
+
+            System.out.println("Total pairs found: " + totalPairs);
+
+            if (totalPairs > 0) {
+                // Generate insights
+                generatePairsInsights(topProduct1, topProduct2, topFrequency, totalPairs);
+            } else {
+                JOptionPane.showMessageDialog(this,
+                        "No product pairs found. Make sure:\n"
+                        + "1. Date range includes data (try 1/1/2022 to 12/31/2023)\n"
+                        + "2. Customers bought multiple products same day",
+                        "No Data Found",
+                        JOptionPane.INFORMATION_MESSAGE);
             }
 
         } catch (Exception e) {
-            JOptionPane.showMessageDialog(null, e);
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this,
+                    "Error analyzing product pairs: " + e.getMessage(),
+                    "Analysis Error",
+                    JOptionPane.ERROR_MESSAGE);
+        } finally {
+            try {
+                if (rs != null) {
+                    rs.close();
+                }
+                if (pst != null) {
+                    pst.close();
+                }
+                if (con != null) {
+                    con.close();
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
         }
     }
 
-    //  Method to get regional sales by date range to update the pie and bar chart
-    public Map<String, Double> getRegionalSalesByDateRange(String fromDate, String toDate) {
+    public void analyzePairsAnalyticsHeadings() {
 
-        Map<String, Double> regionSales = new HashMap<>();
+        heading1.setText("Top Product Pair");
+        heading2.setText("Frequency");
+        heading3.setText("Total Pairs");
+        heading4.setText("Display");
+
+    }
+
+    private void generatePairsInsights(String topProduct1, String topProduct2, int topFrequency, int totalPairs) {
+
+        // Update labels
+        if (label1 != null) {
+            label1.setText(topProduct1 + " + " + topProduct2);
+        }
+
+        if (label2 != null) {
+            label2.setText(String.valueOf(topFrequency) + " times");
+        }
+
+        if (label3 != null) {
+            label3.setText(String.valueOf(totalPairs) + " pairs");
+        }
+
+        if (label4 != null) {
+            label4.setText("Top 20 pairs");
+        }
+    }
+
+    public void analyzeDayAnalyticsHeadings() {
+
+        heading1.setText("Peak Day");
+        heading2.setText("Peak Revenue");
+        heading3.setText("Total Transactions");
+        heading4.setText("Total Revenue");
+
+    }
+
+    private void analyzeDayOfWeekPatterns(String fromDate, String toDate) {
 
         Connection con = null;
         PreparedStatement pst = null;
@@ -173,231 +265,98 @@ public class CustomerBehavior extends javax.swing.JPanel {
         try {
             con = db.getConnection();
 
-            String query = "SELECT region, SUM(total_price) AS total_sales "
+            String query = "SELECT "
+                    + "DAYNAME(STR_TO_DATE(date, '%m/%d/%Y')) as day_name, "
+                    + "COUNT(DISTINCT tra_id) as transaction_count, "
+                    + "SUM(total_price) as total_revenue, "
+                    + "ROUND(COUNT(DISTINCT tra_id) * 100.0 / "
+                    + "(SELECT COUNT(DISTINCT tra_id) FROM transactions "
+                    + "WHERE STR_TO_DATE(date, '%m/%d/%Y') BETWEEN ? AND ?), 2) as percentage "
                     + "FROM transactions "
-                    + "WHERE STR_TO_DATE(date, '%m/%d/%Y') BETWEEN STR_TO_DATE(?, '%m/%d/%Y') "
-                    + "AND STR_TO_DATE(?, '%m/%d/%Y') "
-                    + "GROUP BY region";
+                    + "WHERE STR_TO_DATE(date, '%m/%d/%Y') BETWEEN ? AND ? "
+                    + "GROUP BY DAYNAME(STR_TO_DATE(date, '%m/%d/%Y')) "
+                    + "ORDER BY FIELD(day_name, 'Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday')";
 
             pst = con.prepareStatement(query);
             pst.setString(1, fromDate);
             pst.setString(2, toDate);
+            pst.setString(3, fromDate);
+            pst.setString(4, toDate);
 
             rs = pst.executeQuery();
+
+            // Update data table
+            DefaultTableModel model = (DefaultTableModel) dataTable.getModel();
+            model.setRowCount(0);
+            model.setColumnIdentifiers(new String[]{"Day", "Transactions", "Revenue", "% of Total"});
+
+            DecimalFormat df = new DecimalFormat("#,##0.00");
+            int totalTransactions = 0;
+            double totalRevenue = 0;
+            String peakDay = "";
+            double peakRevenue = 0;
 
             while (rs.next()) {
-                String region = rs.getString("region");
-                double sales = rs.getDouble("total_sales");
-                regionSales.put(region, sales);
+
+                String day = rs.getString("day_name");
+                int transactions = rs.getInt("transaction_count");
+                double revenue = rs.getDouble("total_revenue");
+                double percentage = rs.getDouble("percentage");
+
+                Object[] row = new Object[4];
+                row[0] = day;
+                row[1] = transactions;
+                row[2] = "Rs. " + df.format(revenue);
+                row[3] = String.format("%.1f%%", percentage);
+
+                model.addRow(row);
+
+                totalTransactions += transactions;
+                totalRevenue += revenue;
+
+                if (revenue > peakRevenue) {
+                    peakRevenue = revenue;
+                    peakDay = day;
+                }
             }
+
+            // Create bar chart
+            //createDayOfWeekBarChart(fromDate, toDate);
+            // Generate insights
+            generateDayOfWeekInsights(peakDay, peakRevenue, totalTransactions, totalRevenue);
 
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-        return regionSales;
     }
 
-    //  Pie chart update method according to selected dates    
-    private void updatePieChart(String fromDate, String toDate) {
+    public void generateDayOfWeekInsights(String peakDay, double peakRevenue, int totalTransactions, double totalRevenue) {
 
-        // Fetch data from DB
-        Map<String, Double> data = getRegionalSalesByDateRange(fromDate, toDate);
+        DecimalFormat df = new DecimalFormat("#,##0.00");
+        DecimalFormat percentFormat = new DecimalFormat("0.0");
 
-        // Create dataset
-        DefaultPieDataset dataset = new DefaultPieDataset();
-        for (Map.Entry<String, Double> entry : data.entrySet()) {
-            dataset.setValue(entry.getKey(), entry.getValue());
+        // Calculate percentage
+        double peakPercentage = 0;
+        if (totalRevenue > 0) {
+            peakPercentage = (peakRevenue / totalRevenue) * 100;
         }
 
-        // Create chart
-        JFreeChart pieChart = ChartFactory.createPieChart(
-                "Sales by Region",
-                dataset,
-                true, true, false
-        );
-
-        pieChart.getTitle().setFont(new java.awt.Font("SansSerif", java.awt.Font.BOLD, 14));
-        pieChart.getLegend().setItemFont(new java.awt.Font("SansSerif", java.awt.Font.PLAIN, 11));
-
-        // Panel settings
-        ChartPanel chartPanel = new ChartPanel(pieChart);
-        chartPanel.setPreferredSize(new java.awt.Dimension(550, 330));
-
-        pieChartPanel.removeAll();
-        pieChartPanel.setLayout(new java.awt.BorderLayout());
-        pieChartPanel.add(chartPanel, BorderLayout.CENTER);
-        pieChartPanel.revalidate();
-        pieChartPanel.repaint();
-    }
-
-    //  Bar chart update method according to selected dates
-    private void updateBarChart(String fromDate, String toDate) {
-
-        Map<String, Double> data = getRegionalSalesByDateRange(fromDate, toDate);
-
-        DefaultCategoryDataset dataset = new DefaultCategoryDataset();
-        for (Map.Entry<String, Double> entry : data.entrySet()) {
-            dataset.addValue(entry.getValue(), "Sales", entry.getKey());
+        if (label1 != null) {
+            label1.setText(peakDay);
         }
 
-        JFreeChart barChart = ChartFactory.createBarChart(
-                "Sales by Region",
-                "Region",
-                "Sales (Rs.)",
-                dataset
-        );
-
-        barChart.getTitle().setFont(new java.awt.Font("SansSerif", java.awt.Font.BOLD, 14));
-
-        barChart.getCategoryPlot().getDomainAxis().setLabelFont(new java.awt.Font("SansSerif", java.awt.Font.PLAIN, 11));
-        barChart.getCategoryPlot().getRangeAxis().setLabelFont(new java.awt.Font("SansSerif", java.awt.Font.PLAIN, 11));
-
-        barChart.getCategoryPlot().getDomainAxis().setTickLabelFont(new java.awt.Font("SansSerif", java.awt.Font.PLAIN, 10));
-        barChart.getCategoryPlot().getRangeAxis().setTickLabelFont(new java.awt.Font("SansSerif", java.awt.Font.PLAIN, 10));
-
-        ChartPanel chartPanel = new ChartPanel(barChart);
-        chartPanel.setPreferredSize(new java.awt.Dimension(550, 330));
-        chartPanel.setMaximumDrawWidth(550);
-        chartPanel.setMaximumDrawHeight(330);
-
-        barChartPanel.removeAll();
-        barChartPanel.setLayout(new java.awt.BorderLayout());
-        barChartPanel.add(chartPanel, BorderLayout.CENTER);
-        barChartPanel.revalidate();
-        barChartPanel.repaint();
-    }
-
-    public Map<String, Double> getRegionalSalesData() {
-        Map<String, Double> regionSales = new HashMap<>();
-
-        Connection con = null;
-        PreparedStatement pst = null;
-        ResultSet rs = null;
-
-        try {
-            con = db.getConnection();
-            String query = "SELECT region, SUM(total_price) as total_sales "
-                    + "FROM transactions GROUP BY region";
-            pst = con.prepareStatement(query);
-            rs = pst.executeQuery();
-
-            while (rs.next()) {
-                String region = rs.getString("region");
-                double sales = rs.getDouble("total_sales");
-                regionSales.put(region, sales);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return regionSales;
-    }
-
-    private void createPieChart() {
-        Map<String, Double> data = getRegionalSalesData();
-
-        DefaultPieDataset dataset = new DefaultPieDataset();
-        for (Map.Entry<String, Double> entry : data.entrySet()) {
-            dataset.setValue(entry.getKey(), entry.getValue());
+        if (label2 != null) {
+            label2.setText(df.format(peakRevenue));
         }
 
-        JFreeChart pieChart = ChartFactory.createPieChart(
-                "Sales by Region",
-                dataset,
-                true, true, false
-        );
-
-        pieChart.getTitle().setFont(new java.awt.Font("SansSerif", java.awt.Font.BOLD, 14));
-
-        pieChart.getLegend().setItemFont(new java.awt.Font("SansSerif", java.awt.Font.PLAIN, 11));
-
-        ChartPanel chartPanel = new ChartPanel(pieChart);
-        chartPanel.setPreferredSize(new java.awt.Dimension(550, 330));
-        chartPanel.setMaximumDrawWidth(550);
-        chartPanel.setMaximumDrawHeight(330);
-
-        pieChartPanel.removeAll();
-        pieChartPanel.setLayout(new java.awt.BorderLayout());
-        pieChartPanel.add(chartPanel, BorderLayout.CENTER);
-        pieChartPanel.revalidate();
-        pieChartPanel.repaint();
-    }
-
-    private void createBarChart() {
-        Map<String, Double> data = getRegionalSalesData();
-
-        DefaultCategoryDataset dataset = new DefaultCategoryDataset();
-        for (Map.Entry<String, Double> entry : data.entrySet()) {
-            dataset.addValue(entry.getValue(), "Sales", entry.getKey());
+        if (label3 != null) {
+            label3.setText("" + totalTransactions);
         }
 
-        JFreeChart barChart = ChartFactory.createBarChart(
-                "Sales by Region",
-                "Region",
-                "Sales (Rs.)",
-                dataset
-        );
-
-        barChart.getTitle().setFont(new java.awt.Font("SansSerif", java.awt.Font.BOLD, 14));
-
-        barChart.getCategoryPlot().getDomainAxis().setLabelFont(new java.awt.Font("SansSerif", java.awt.Font.PLAIN, 11));
-        barChart.getCategoryPlot().getRangeAxis().setLabelFont(new java.awt.Font("SansSerif", java.awt.Font.PLAIN, 11));
-
-        barChart.getCategoryPlot().getDomainAxis().setTickLabelFont(new java.awt.Font("SansSerif", java.awt.Font.PLAIN, 10));
-        barChart.getCategoryPlot().getRangeAxis().setTickLabelFont(new java.awt.Font("SansSerif", java.awt.Font.PLAIN, 10));
-
-        ChartPanel chartPanel = new ChartPanel(barChart);
-        chartPanel.setPreferredSize(new java.awt.Dimension(550, 330));
-        chartPanel.setMaximumDrawWidth(550);
-        chartPanel.setMaximumDrawHeight(330);
-
-        barChartPanel.removeAll();
-        barChartPanel.setLayout(new java.awt.BorderLayout());
-        barChartPanel.add(chartPanel, BorderLayout.CENTER);
-        barChartPanel.revalidate();
-        barChartPanel.repaint();
-    }
-
-    //  Generate report    
-    public void generateReport(String fromDate, String toDate) {
-
-        Connection con = null;
-        PreparedStatement pst = null;
-        java.sql.ResultSet rs = null;
-
-        // Initialize variables with defaults
-        String topRegion = "";
-        String topProduct = "";
-        String totalSales = "";
-
-        try {
-            con = db.getConnection();
-            String query = "SELECT region, pro_name, SUM(total_price) as total_sales "
-                    + "FROM transactions "
-                    + "WHERE STR_TO_DATE(date, '%m/%d/%Y') BETWEEN STR_TO_DATE(?, '%m/%d/%Y') "
-                    + "AND STR_TO_DATE(?, '%m/%d/%Y') "
-                    + "GROUP BY region "
-                    + "ORDER BY total_sales DESC "
-                    + "LIMIT 1";
-
-            pst = con.prepareStatement(query);
-            pst.setString(1, fromDate);
-            pst.setString(2, toDate);
-
-            rs = pst.executeQuery();
-
-            if (rs.next()) {
-                topRegion = rs.getString("region");
-                topProduct = rs.getString("pro_name");
-                double sales = rs.getDouble("total_sales");
-                totalSales = "Rs. " + String.format("%,.2f", sales);
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
+        if (label4 != null) {
+            label4.setText(df.format(totalRevenue));
         }
 
-        //generatePDFReport(topRegion, topProduct, totalSales);
     }
 
     /**
@@ -417,7 +376,7 @@ public class CustomerBehavior extends javax.swing.JPanel {
         pieChartPanel = new javax.swing.JPanel();
         jPanel2 = new javax.swing.JPanel();
         jScrollPane1 = new javax.swing.JScrollPane();
-        regionalTable = new javax.swing.JTable();
+        dataTable = new javax.swing.JTable();
         jLabel10 = new javax.swing.JLabel();
         jLabel12 = new javax.swing.JLabel();
         jSeparator1 = new javax.swing.JSeparator();
@@ -430,20 +389,19 @@ public class CustomerBehavior extends javax.swing.JPanel {
         refreshBtn = new javax.swing.JButton();
         jPanel6 = new javax.swing.JPanel();
         jLabel6 = new javax.swing.JLabel();
-        jLabel11 = new javax.swing.JLabel();
-        jLabel13 = new javax.swing.JLabel();
+        heading1 = new javax.swing.JLabel();
         jPanel8 = new javax.swing.JPanel();
         jPanel9 = new javax.swing.JPanel();
-        totalSoldLabel = new javax.swing.JLabel();
-        jLabel16 = new javax.swing.JLabel();
+        label1 = new javax.swing.JLabel();
+        heading2 = new javax.swing.JLabel();
         jPanel12 = new javax.swing.JPanel();
-        totalRevenueLabel = new javax.swing.JLabel();
-        jLabel18 = new javax.swing.JLabel();
+        label2 = new javax.swing.JLabel();
+        heading3 = new javax.swing.JLabel();
         jPanel13 = new javax.swing.JPanel();
-        topRegionLabel = new javax.swing.JLabel();
-        jLabel19 = new javax.swing.JLabel();
+        label3 = new javax.swing.JLabel();
+        heading4 = new javax.swing.JLabel();
         jPanel14 = new javax.swing.JPanel();
-        topRegionLabel1 = new javax.swing.JLabel();
+        label4 = new javax.swing.JLabel();
         resetBtn = new javax.swing.JButton();
         generateReportBtn = new javax.swing.JButton();
 
@@ -459,7 +417,7 @@ public class CustomerBehavior extends javax.swing.JPanel {
         );
         barChartPanelLayout.setVerticalGroup(
             barChartPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 452, Short.MAX_VALUE)
+            .addGap(0, 441, Short.MAX_VALUE)
         );
 
         javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
@@ -491,7 +449,7 @@ public class CustomerBehavior extends javax.swing.JPanel {
         );
         pieChartPanelLayout.setVerticalGroup(
             pieChartPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 445, Short.MAX_VALUE)
+            .addGap(0, 434, Short.MAX_VALUE)
         );
 
         javax.swing.GroupLayout jPanel4Layout = new javax.swing.GroupLayout(jPanel4);
@@ -513,7 +471,7 @@ public class CustomerBehavior extends javax.swing.JPanel {
 
         jTabbedPane1.addTab("Chart View 2", jPanel4);
 
-        regionalTable.setModel(new javax.swing.table.DefaultTableModel(
+        dataTable.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
 
             },
@@ -529,12 +487,12 @@ public class CustomerBehavior extends javax.swing.JPanel {
                 return canEdit [columnIndex];
             }
         });
-        jScrollPane1.setViewportView(regionalTable);
-        if (regionalTable.getColumnModel().getColumnCount() > 0) {
-            regionalTable.getColumnModel().getColumn(0).setResizable(false);
-            regionalTable.getColumnModel().getColumn(1).setResizable(false);
-            regionalTable.getColumnModel().getColumn(2).setResizable(false);
-            regionalTable.getColumnModel().getColumn(3).setResizable(false);
+        jScrollPane1.setViewportView(dataTable);
+        if (dataTable.getColumnModel().getColumnCount() > 0) {
+            dataTable.getColumnModel().getColumn(0).setResizable(false);
+            dataTable.getColumnModel().getColumn(1).setResizable(false);
+            dataTable.getColumnModel().getColumn(2).setResizable(false);
+            dataTable.getColumnModel().getColumn(3).setResizable(false);
         }
 
         jLabel10.setFont(new java.awt.Font("Segoe UI", 0, 16)); // NOI18N
@@ -559,7 +517,7 @@ public class CustomerBehavior extends javax.swing.JPanel {
                 .addComponent(jLabel10, javax.swing.GroupLayout.PREFERRED_SIZE, 31, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 119, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(307, Short.MAX_VALUE))
+                .addContainerGap(296, Short.MAX_VALUE))
         );
 
         jTabbedPane1.addTab("Table View", jPanel2);
@@ -600,13 +558,9 @@ public class CustomerBehavior extends javax.swing.JPanel {
         jLabel6.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         jLabel6.setText("Product Analysis");
 
-        jLabel11.setFont(new java.awt.Font("Microsoft Tai Le", 0, 16)); // NOI18N
-        jLabel11.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-        jLabel11.setText("Total Sales");
-
-        jLabel13.setFont(new java.awt.Font("Microsoft Tai Le", 0, 14)); // NOI18N
-        jLabel13.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        jLabel13.setText("(According to selected dates)");
+        heading1.setFont(new java.awt.Font("Microsoft Tai Le", 0, 16)); // NOI18N
+        heading1.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        heading1.setText("Total Sales");
 
         jPanel8.setBackground(new java.awt.Color(255, 255, 255));
 
@@ -623,7 +577,7 @@ public class CustomerBehavior extends javax.swing.JPanel {
 
         jPanel9.setBackground(new java.awt.Color(255, 255, 255));
 
-        totalSoldLabel.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
+        label1.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
 
         javax.swing.GroupLayout jPanel9Layout = new javax.swing.GroupLayout(jPanel9);
         jPanel9.setLayout(jPanel9Layout);
@@ -631,21 +585,21 @@ public class CustomerBehavior extends javax.swing.JPanel {
             jPanel9Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel9Layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(totalSoldLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(label1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addContainerGap())
         );
         jPanel9Layout.setVerticalGroup(
             jPanel9Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(totalSoldLabel, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 37, Short.MAX_VALUE)
+            .addComponent(label1, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 37, Short.MAX_VALUE)
         );
 
-        jLabel16.setFont(new java.awt.Font("Microsoft Tai Le", 0, 16)); // NOI18N
-        jLabel16.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-        jLabel16.setText("Total Revenue ");
+        heading2.setFont(new java.awt.Font("Microsoft Tai Le", 0, 16)); // NOI18N
+        heading2.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        heading2.setText("Total Revenue ");
 
         jPanel12.setBackground(new java.awt.Color(255, 255, 255));
 
-        totalRevenueLabel.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
+        label2.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
 
         javax.swing.GroupLayout jPanel12Layout = new javax.swing.GroupLayout(jPanel12);
         jPanel12.setLayout(jPanel12Layout);
@@ -653,21 +607,21 @@ public class CustomerBehavior extends javax.swing.JPanel {
             jPanel12Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel12Layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(totalRevenueLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(label2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addContainerGap())
         );
         jPanel12Layout.setVerticalGroup(
             jPanel12Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(totalRevenueLabel, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 37, Short.MAX_VALUE)
+            .addComponent(label2, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 37, Short.MAX_VALUE)
         );
 
-        jLabel18.setFont(new java.awt.Font("Microsoft Tai Le", 0, 16)); // NOI18N
-        jLabel18.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-        jLabel18.setText("Top Region for This Product");
+        heading3.setFont(new java.awt.Font("Microsoft Tai Le", 0, 16)); // NOI18N
+        heading3.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        heading3.setText("Top Region for This Product");
 
         jPanel13.setBackground(new java.awt.Color(255, 255, 255));
 
-        topRegionLabel.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
+        label3.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
 
         javax.swing.GroupLayout jPanel13Layout = new javax.swing.GroupLayout(jPanel13);
         jPanel13.setLayout(jPanel13Layout);
@@ -675,21 +629,21 @@ public class CustomerBehavior extends javax.swing.JPanel {
             jPanel13Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel13Layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(topRegionLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(label3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addContainerGap())
         );
         jPanel13Layout.setVerticalGroup(
             jPanel13Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(topRegionLabel, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 37, Short.MAX_VALUE)
+            .addComponent(label3, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 37, Short.MAX_VALUE)
         );
 
-        jLabel19.setFont(new java.awt.Font("Microsoft Tai Le", 0, 16)); // NOI18N
-        jLabel19.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-        jLabel19.setText("Top Region for This Product");
+        heading4.setFont(new java.awt.Font("Microsoft Tai Le", 0, 16)); // NOI18N
+        heading4.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        heading4.setText("Top Region for This Product");
 
         jPanel14.setBackground(new java.awt.Color(255, 255, 255));
 
-        topRegionLabel1.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
+        label4.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 17)); // NOI18N
 
         javax.swing.GroupLayout jPanel14Layout = new javax.swing.GroupLayout(jPanel14);
         jPanel14.setLayout(jPanel14Layout);
@@ -697,12 +651,12 @@ public class CustomerBehavior extends javax.swing.JPanel {
             jPanel14Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel14Layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(topRegionLabel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(label4, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addContainerGap())
         );
         jPanel14Layout.setVerticalGroup(
             jPanel14Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(topRegionLabel1, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 37, Short.MAX_VALUE)
+            .addComponent(label4, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 37, Short.MAX_VALUE)
         );
 
         javax.swing.GroupLayout jPanel6Layout = new javax.swing.GroupLayout(jPanel6);
@@ -716,16 +670,15 @@ public class CustomerBehavior extends javax.swing.JPanel {
                         .addGap(10, 10, 10)
                         .addComponent(jLabel6, javax.swing.GroupLayout.PREFERRED_SIZE, 185, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                        .addComponent(jLabel13, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addComponent(jLabel16, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.PREFERRED_SIZE, 185, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(heading2, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.PREFERRED_SIZE, 185, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addComponent(jPanel12, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addComponent(jPanel13, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addComponent(jLabel18, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 213, Short.MAX_VALUE)
-                        .addComponent(jLabel11, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.PREFERRED_SIZE, 185, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(heading3, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 213, Short.MAX_VALUE)
+                        .addComponent(heading1, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.PREFERRED_SIZE, 185, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addComponent(jPanel9, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                     .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
                         .addComponent(jPanel14, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addComponent(jLabel19, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.PREFERRED_SIZE, 213, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addComponent(heading4, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.PREFERRED_SIZE, 213, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(jPanel8, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
@@ -740,25 +693,23 @@ public class CustomerBehavior extends javax.swing.JPanel {
                     .addGroup(jPanel6Layout.createSequentialGroup()
                         .addGap(21, 21, 21)
                         .addComponent(jLabel6, javax.swing.GroupLayout.PREFERRED_SIZE, 22, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(0, 0, 0)
-                        .addComponent(jLabel13)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(jLabel11, javax.swing.GroupLayout.PREFERRED_SIZE, 28, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(12, 12, 12)
+                        .addComponent(heading1, javax.swing.GroupLayout.PREFERRED_SIZE, 28, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(1, 1, 1)
                         .addComponent(jPanel9, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(jLabel16, javax.swing.GroupLayout.PREFERRED_SIZE, 28, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(18, 18, 18)
+                        .addComponent(heading2, javax.swing.GroupLayout.PREFERRED_SIZE, 28, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(1, 1, 1)
                         .addComponent(jPanel12, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(jLabel18, javax.swing.GroupLayout.PREFERRED_SIZE, 28, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(18, 18, 18)
+                        .addComponent(heading3, javax.swing.GroupLayout.PREFERRED_SIZE, 28, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(1, 1, 1)
                         .addComponent(jPanel13, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(jLabel19, javax.swing.GroupLayout.PREFERRED_SIZE, 28, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(18, 18, 18)
+                        .addComponent(heading4, javax.swing.GroupLayout.PREFERRED_SIZE, 28, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(1, 1, 1)
                         .addComponent(jPanel14, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addContainerGap(26, Short.MAX_VALUE))
+                .addContainerGap(19, Short.MAX_VALUE))
         );
 
         resetBtn.setFont(new java.awt.Font("Microsoft Sans Serif", 0, 16)); // NOI18N
@@ -830,16 +781,16 @@ public class CustomerBehavior extends javax.swing.JPanel {
                     .addComponent(jLabel12, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(analysisComboBox))
                 .addGap(18, 18, 18)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(jPanel1Layout.createSequentialGroup()
                         .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                             .addComponent(refreshBtn, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                             .addComponent(generateReportBtn, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 33, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addComponent(jPanel6, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(9, 9, 9)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(resetBtn, javax.swing.GroupLayout.PREFERRED_SIZE, 43, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addComponent(jTabbedPane1))
+                    .addComponent(jTabbedPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 490, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addContainerGap(18, Short.MAX_VALUE))
         );
 
@@ -865,9 +816,9 @@ public class CustomerBehavior extends javax.swing.JPanel {
 
     private void resetBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_resetBtnActionPerformed
 
-        totalSoldLabel.setText("");
-        totalRevenueLabel.setText("");
-        topRegionLabel.setText("");
+        label1.setText("");
+        label2.setText("");
+        label3.setText("");
         dateFromChooser.setDate(null);
         dateToChooser.setDate(null);
 
@@ -875,30 +826,27 @@ public class CustomerBehavior extends javax.swing.JPanel {
 
     private void generateReportBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_generateReportBtnActionPerformed
 
-        
+
     }//GEN-LAST:event_generateReportBtnActionPerformed
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JComboBox<String> analysisComboBox;
     private javax.swing.JPanel barChartPanel;
+    private javax.swing.JTable dataTable;
     private com.toedter.calendar.JDateChooser dateFromChooser;
     private com.toedter.calendar.JDateChooser dateToChooser;
     private javax.swing.JButton generateReportBtn;
+    private javax.swing.JLabel heading1;
+    private javax.swing.JLabel heading2;
+    private javax.swing.JLabel heading3;
+    private javax.swing.JLabel heading4;
     private javax.swing.JLabel jLabel10;
-    private javax.swing.JLabel jLabel11;
     private javax.swing.JLabel jLabel12;
-    private javax.swing.JLabel jLabel13;
-    private javax.swing.JLabel jLabel16;
-    private javax.swing.JLabel jLabel18;
-    private javax.swing.JLabel jLabel19;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
-    private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel5;
     private javax.swing.JLabel jLabel6;
-    private javax.swing.JLabel jLabel8;
-    private javax.swing.JLabel jLabel9;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel12;
     private javax.swing.JPanel jPanel13;
@@ -906,21 +854,18 @@ public class CustomerBehavior extends javax.swing.JPanel {
     private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel3;
     private javax.swing.JPanel jPanel4;
-    private javax.swing.JPanel jPanel5;
     private javax.swing.JPanel jPanel6;
-    private javax.swing.JPanel jPanel7;
     private javax.swing.JPanel jPanel8;
     private javax.swing.JPanel jPanel9;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JSeparator jSeparator1;
     private javax.swing.JTabbedPane jTabbedPane1;
+    private javax.swing.JLabel label1;
+    private javax.swing.JLabel label2;
+    private javax.swing.JLabel label3;
+    private javax.swing.JLabel label4;
     private javax.swing.JPanel pieChartPanel;
     private javax.swing.JButton refreshBtn;
-    private javax.swing.JTable regionalTable;
     private javax.swing.JButton resetBtn;
-    private javax.swing.JLabel topRegionLabel;
-    private javax.swing.JLabel topRegionLabel1;
-    private javax.swing.JLabel totalRevenueLabel;
-    private javax.swing.JLabel totalSoldLabel;
     // End of variables declaration//GEN-END:variables
 }

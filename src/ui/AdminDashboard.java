@@ -238,7 +238,10 @@ public class AdminDashboard extends javax.swing.JFrame {
     }//GEN-LAST:event_dashboardBtnActionPerformed
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
-        // TODO add your handling code here:
+        
+        UserManagment pro = new UserManagment();
+        jpload.jPanelLoader(PanelDashboard, pro);
+        
     }//GEN-LAST:event_jButton1ActionPerformed
 
     private void importPageBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_importPageBtnActionPerformed

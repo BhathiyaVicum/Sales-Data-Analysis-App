@@ -72,8 +72,6 @@ public class Login extends javax.swing.JFrame {
                     }
 
                 }
-            } else {
-                System.out.println("User not found");
             }
 
         } catch (Exception e) {

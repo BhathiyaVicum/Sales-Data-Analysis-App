@@ -112,7 +112,6 @@ public class CustomerBehavior extends javax.swing.JPanel {
         try {
             con = db.getConnection();
 
-            // IMPORTANT: Convert dates to match your database format (M/d/yyyy)
             SimpleDateFormat uiFormat = new SimpleDateFormat("MM/dd/yyyy");
             SimpleDateFormat dbFormat = new SimpleDateFormat("M/d/yyyy");
 
@@ -131,9 +130,9 @@ public class CustomerBehavior extends javax.swing.JPanel {
                     + "COUNT(*) as frequency "
                     + "FROM transactions t1 "
                     + "JOIN transactions t2 ON t1.cus_id = t2.cus_id "
-                    + "AND t1.date = t2.date " // Same date
-                    + "AND t1.pro_id < t2.pro_id " // Avoid duplicates
-                    + "WHERE t1.date >= ? AND t1.date <= ? " // String comparison
+                    + "AND t1.date = t2.date "
+                    + "AND t1.pro_id < t2.pro_id "
+                    + "WHERE t1.date >= ? AND t1.date <= ? "
                     + "AND t2.date >= ? AND t2.date <= ? "
                     + "GROUP BY t1.pro_name, t2.pro_name "
                     + "HAVING COUNT(*) >= 1 "

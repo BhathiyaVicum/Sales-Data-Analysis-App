@@ -19,6 +19,7 @@ import java.sql.ResultSet;
 import javax.swing.JOptionPane;
 import com.toedter.calendar.JDateChooser;
 import java.awt.Color;
+import java.awt.Cursor;
 import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -638,7 +639,7 @@ public class CustomerBehavior extends javax.swing.JPanel {
     //CHART METHODS
     private void createBarChart(DefaultCategoryDataset dataset, String title, String xAxis, String yAxis) {
         if (dataset.getRowCount() == 0) {
-            
+
             // Show empty chart with message
             DefaultCategoryDataset emptyDataset = new DefaultCategoryDataset();
             JFreeChart emptyChart = ChartFactory.createBarChart(
@@ -742,11 +743,188 @@ public class CustomerBehavior extends javax.swing.JPanel {
         pieChartPanel.repaint();
     }
 
-    private void generatePDFReport(String analysisType, String fromDate, String toDate) {
-        // You can implement PDF generation similar to your SalesAnalysis class
-        // For now, show a message
-        JOptionPane.showMessageDialog(this, "PDF Export for " + analysisType + "\nFrom: " + fromDate + "\nTo: " + toDate,
-                "Generate Report", JOptionPane.INFORMATION_MESSAGE);
+    // Report generation    
+    private void generatePDFReport(String analysisType, String fromDate, String toDate,
+            String insight1, String insight2, String insight3, String insight4) {
+
+        OutputStream os = null;
+
+        try {
+            SimpleDateFormat displayFormat = new SimpleDateFormat("MMMM dd, yyyy");
+            SimpleDateFormat inputFormat = new SimpleDateFormat("MM/dd/yyyy");
+            SimpleDateFormat fileNameFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
+
+            // Parse dates for display
+            Date fromDisplayDate = inputFormat.parse(fromDate);
+            Date toDisplayDate = inputFormat.parse(toDate);
+
+            // XHTML content
+            StringBuilder html = new StringBuilder();
+            html.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+            html.append("<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">");
+            html.append("<html xmlns=\"http://www.w3.org/1999/xhtml\">");
+            html.append("<head>");
+            html.append("<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\"/>");
+            html.append("<title>Customer Behavior Report</title>");
+            html.append("<style type=\"text/css\">");
+            html.append("@page { size: A4; margin: 1.5cm; }");
+            html.append("body { font-family: Arial, sans-serif; margin: 15px; line-height: 1.4; font-size: 11px; }");
+            html.append("h1 { color: #2c3e50; text-align: center; margin-bottom: 8px; font-size: 18px; }");
+            html.append("h2 { color: #34495e; border-bottom: 1px solid #3498db; padding-bottom: 3px; margin-top: 15px; margin-bottom: 10px; font-size: 14px; }");
+            html.append(".report-info { text-align: center; color: #7f8c8d; margin-bottom: 10px; font-size: 10px; }");
+
+            // Summary rows
+            html.append(".summary-container { width: 100%; margin: 10px 0; }");
+            html.append(".summary-table { width: 100%; border-collapse: collapse; }");
+            html.append(".summary-card { padding: 10px; background: #f8f9fa; border: 1px solid #dee2e6; text-align: center; }");
+            html.append(".card-title { font-weight: bold; color: #495057; font-size: 10px; margin-bottom: 5px; }");
+            html.append(".card-value { font-size: 13px; color: #28a745; font-weight: bold; }");
+
+            html.append("table.data-table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 10px; }");
+            html.append("th { background-color: #3498db; color: white; padding: 8px; text-align: left; font-weight: bold; }");
+            html.append("td { padding: 6px; border: 1px solid #ddd; }");
+            html.append(".avoid-break { page-break-inside: avoid; }");
+            html.append("</style>");
+            html.append("</head>");
+            html.append("<body class=\"avoid-break\">");
+
+            // Report header
+            html.append("<h1>Customer Behavior Analysis Report</h1>");
+            html.append("<h2>").append(analysisType).append("</h2>");
+            html.append("<div class=\"report-info\">");
+
+            if (fromDisplayDate != null && toDisplayDate != null) {
+                html.append("<p><strong>Report Period:</strong> " + displayFormat.format(fromDisplayDate)
+                        + " to " + displayFormat.format(toDisplayDate) + "</p>");
+            }
+
+            html.append("<p><strong>Generated On:</strong> " + displayFormat.format(new Date()) + "</p>");
+            html.append("</div>");
+
+            // Summary Cards - Dynamic based on analysis type
+            html.append("<h2>Key Insights</h2>");
+            html.append("<div class=\"summary-container\">");
+            html.append("<table class=\"summary-table\">");
+            html.append("<tr>");
+
+            // Heading1 + Label1
+            html.append("<td width=\"25%\"><div class=\"summary-card\">");
+            html.append("<div class=\"card-title\">").append(heading1.getText()).append("</div>");
+            html.append("<div class=\"card-value\">").append(insight1).append("</div>");
+            html.append("</div></td>");
+
+            // Heading2 + Label2
+            html.append("<td width=\"25%\"><div class=\"summary-card\">");
+            html.append("<div class=\"card-title\">").append(heading2.getText()).append("</div>");
+            html.append("<div class=\"card-value\">").append(insight2).append("</div>");
+            html.append("</div></td>");
+
+            // Heading3 + Label3
+            html.append("<td width=\"25%\"><div class=\"summary-card\">");
+            html.append("<div class=\"card-title\">").append(heading3.getText()).append("</div>");
+            html.append("<div class=\"card-value\">").append(insight3).append("</div>");
+            html.append("</div></td>");
+
+            // Heading4 + Label4
+            html.append("<td width=\"25%\"><div class=\"summary-card\">");
+            html.append("<div class=\"card-title\">").append(heading4.getText()).append("</div>");
+            html.append("<div class=\"card-value\">").append(insight4).append("</div>");
+            html.append("</div></td>");
+
+            html.append("</tr>");
+            html.append("</table>");
+            html.append("</div>");
+
+            // Detailed Data Table
+            html.append("<h2>Detailed Analysis Data</h2>");
+            html.append("<table class=\"data-table\">");
+
+            // Get table headers
+            DefaultTableModel model = (DefaultTableModel) dataTable.getModel();
+            int colCount = model.getColumnCount();
+
+            html.append("<tr>");
+            for (int col = 0; col < colCount; col++) {
+                html.append("<th>").append(model.getColumnName(col)).append("</th>");
+            }
+            html.append("</tr>");
+
+            // Get table data
+            for (int row = 0; row < model.getRowCount(); row++) {
+                html.append("<tr>");
+                for (int col = 0; col < colCount; col++) {
+                    Object value = model.getValueAt(row, col);
+                    String cellValue = value != null ? value.toString() : "";
+
+                    // Escape special XML characters
+                    cellValue = cellValue.replace("&", "&amp;")
+                            .replace("<", "&lt;")
+                            .replace(">", "&gt;")
+                            .replace("\"", "&quot;")
+                            .replace("'", "&apos;");
+
+                    html.append("<td>").append(cellValue).append("</td>");
+                }
+                html.append("</tr>");
+            }
+
+            html.append("</table>");
+
+            // Add summary footer
+            html.append("<div style='margin-top: 20px; font-size: 9px; color: #7f8c8d; text-align: center;'>");
+            html.append("</div>");
+
+            html.append("</body>");
+            html.append("</html>");
+
+            // Save PDF file
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setDialogTitle("Save PDF Report");
+
+            // Create filename with analysis type and timestamp
+            String filePrefix = analysisType.replaceAll("\\s+", "_");
+            String defaultFileName = filePrefix + "_Report_" + fileNameFormat.format(new Date()) + ".pdf";
+            fileChooser.setSelectedFile(new File(defaultFileName));
+
+            if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+                File file = fileChooser.getSelectedFile();
+
+                // Ensure .pdf extension
+                if (!file.getName().toLowerCase().endsWith(".pdf")) {
+                    file = new File(file.getAbsolutePath() + ".pdf");
+                }
+
+                // Create PDF from HTML
+                os = new FileOutputStream(file);
+                ITextRenderer renderer = new ITextRenderer();
+
+                // Set document with HTML content
+                renderer.setDocumentFromString(html.toString());
+                renderer.layout();
+                renderer.createPDF(os);
+
+                os.close();
+
+                JOptionPane.showMessageDialog(this, "PDF report generated successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+
+                // Open the PDF after generating
+                if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
+                    Desktop.getDesktop().open(file);
+                }
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Error generating PDF: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        } finally {
+            if (os != null) {
+                try {
+                    os.close();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
     }
 
     /**
@@ -1234,13 +1412,15 @@ public class CustomerBehavior extends javax.swing.JPanel {
         SimpleDateFormat dbFormat = new SimpleDateFormat("MM/dd/yyyy");
         String fromDate = dbFormat.format(fromSelectedDate);
         String toDate = dbFormat.format(toSelectedDate);
-        String dbFromDate = convertToDbFormat(fromDate);
-        String dbToDate = convertToDbFormat(toDate);
 
-        JOptionPane.showMessageDialog(this,
-                "PDF Export for " + analysisType + "\nFrom: " + fromDate + "\nTo: " + toDate,
-                "Generate Report", JOptionPane.INFORMATION_MESSAGE);
+        // Get summary data from current labels
+        String insight1 = label1.getText();
+        String insight2 = label2.getText();
+        String insight3 = label3.getText();
+        String insight4 = label4.getText();
 
+        generatePDFReport(analysisType, fromDate, toDate, insight1, insight2, insight3, insight4);
+        
     }//GEN-LAST:event_generateReportBtnActionPerformed
 
 

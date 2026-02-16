@@ -25,13 +25,26 @@ public class Login extends javax.swing.JFrame {
 
     JpanelLoader jpload = new JpanelLoader();
 
+    public boolean validateInput(String username, String password) {
+
+        if (username == null || username.trim().isEmpty()) {
+            return false;
+        }
+
+        if (password == null || password.trim().isEmpty()) {
+            return false;
+        }
+
+        return true;
+    }
+
     public void creadentialsCheck() {
 
         String username = txtUsername.getText();
-        String accesscode = txtPassword.getText();
+        String password = txtPassword.getText();
 
-        if (username == null || accesscode == null) {
-            JOptionPane.showMessageDialog(this, "Please enter your name and password", "Login Error", JOptionPane.WARNING_MESSAGE);
+        if (!validateInput(username, password)) {
+            JOptionPane.showMessageDialog(this, "Username or Password cannot be empty");
             return;
         }
 
@@ -53,7 +66,7 @@ public class Login extends javax.swing.JFrame {
                 String role = rs.getString("role");
 
                 //System.out.println(role);
-                if (accesscode.equals(dbAccessCode)) {
+                if (password.equals(dbAccessCode)) {
 
                     switch (role.toLowerCase()) {
                         case "admin":
@@ -61,7 +74,7 @@ public class Login extends javax.swing.JFrame {
                             dashboard1.setVisible(true);
                             this.dispose();
                             break;
-                        case "manager":
+                        case "user":
                             ManagerDashboard dashboard2 = new ManagerDashboard();
                             dashboard2.setVisible(true);
                             this.dispose();

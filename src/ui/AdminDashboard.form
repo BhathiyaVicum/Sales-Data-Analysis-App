@@ -62,7 +62,7 @@
                               <Component id="importPageBtn" pref="220" max="32767" attributes="0"/>
                               <Component id="jButton3" max="32767" attributes="0"/>
                               <Component id="dashboardBtn" max="32767" attributes="0"/>
-                              <Component id="jButton1" max="32767" attributes="0"/>
+                              <Component id="userBtn" max="32767" attributes="0"/>
                               <Component id="jLabel1" alignment="0" max="32767" attributes="0"/>
                               <Component id="jButton5" alignment="0" max="32767" attributes="0"/>
                               <Component id="jButton6" alignment="1" max="32767" attributes="0"/>
@@ -105,7 +105,7 @@
                   <EmptySpace type="unrelated" max="-2" attributes="0"/>
                   <Component id="jSeparator2" min="-2" pref="10" max="-2" attributes="0"/>
                   <EmptySpace min="-2" pref="5" max="-2" attributes="0"/>
-                  <Component id="jButton1" min="-2" pref="37" max="-2" attributes="0"/>
+                  <Component id="userBtn" min="-2" pref="37" max="-2" attributes="0"/>
                   <EmptySpace max="-2" attributes="0"/>
                   <Component id="importPageBtn" min="-2" pref="37" max="-2" attributes="0"/>
                   <EmptySpace max="32767" attributes="0"/>
@@ -116,7 +116,7 @@
         </DimensionLayout>
       </Layout>
       <SubComponents>
-        <Component class="javax.swing.JButton" name="jButton1">
+        <Component class="javax.swing.JButton" name="userBtn">
           <Properties>
             <Property name="background" type="java.awt.Color" editor="org.netbeans.beaninfo.editors.ColorEditor">
               <Color blue="ff" green="f1" red="f1" type="rgb"/>
@@ -130,7 +130,7 @@
             <Property name="text" type="java.lang.String" value="User Management"/>
           </Properties>
           <Events>
-            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jButton1ActionPerformed"/>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="userBtnActionPerformed"/>
           </Events>
         </Component>
         <Component class="javax.swing.JButton" name="dashboardBtn">

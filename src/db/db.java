@@ -24,7 +24,7 @@ public class db {
             Class.forName("com.mysql.cj.jdbc.Driver");
             return DriverManager.getConnection(JDBC_URL, USERNAME, PASSWORD);
         } catch (ClassNotFoundException | SQLException e) {
-            JOptionPane.showMessageDialog(null, e);//"Please Contact Developers!");
+            JOptionPane.showMessageDialog(null, e);
             return null;
         }
     }

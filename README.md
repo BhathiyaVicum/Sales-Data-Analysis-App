@@ -13,6 +13,42 @@
 
 ---
 
+## Screens
+
+### Login
+<img width="1046" height="742" alt="image" src="https://github.com/user-attachments/assets/50049ae4-a4e8-4dd3-99d7-d571c2613fb1" />
+
+### Dashboard
+<img width="1438" height="826" alt="image" src="https://github.com/user-attachments/assets/6a4716f7-7228-4d29-8fa7-96309b0adbf5" />
+
+### Sales Analysis
+<img width="1438" height="826" alt="image" src="https://github.com/user-attachments/assets/5753c858-e305-4263-a68f-2d0c89c1674b" />
+
+--
+
+<img width="1438" height="826" alt="image" src="https://github.com/user-attachments/assets/30d1f264-96ef-475a-846a-193317ac5287" />
+
+### Product Performace
+<img width="1438" height="826" alt="image" src="https://github.com/user-attachments/assets/23988d42-8009-4f71-a9fb-220c9e2482e0" />
+
+### Customer Behavior Analysis
+<img width="1438" height="826" alt="image" src="https://github.com/user-attachments/assets/5c07c443-bf3e-49bd-af6e-30ace71d91e6" />
+
+### Regional Analysis
+<img width="1438" height="826" alt="image" src="https://github.com/user-attachments/assets/d52e9469-41a1-4510-806f-d211356a2bd8" />
+
+### User Management
+<img width="1438" height="826" alt="image" src="https://github.com/user-attachments/assets/d33e65d8-df6a-4866-9450-a88241b8020d" />
+
+### Data Management
+<img width="1438" height="826" alt="image" src="https://github.com/user-attachments/assets/dc7f9ccf-d8d8-44c8-9eb9-b1765a78db0f" />
+
+### Generated report Sample
+<img width="1920" height="1020" alt="image" src="https://github.com/user-attachments/assets/7a318af5-8801-48ce-9d68-81aadab18ec2" />
+
+
+---
+
 ## ✨ Features
 
 ### 🔐 **Authentication System**

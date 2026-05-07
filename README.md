@@ -7,7 +7,7 @@
 
 ## 📋 Overview
 
-**Sampath Food City Sales Analysis System** is a comprehensive desktop application developed for **Sampath Food City (PVT) Ltd**, a leading retail grocery chain in Matugama, Sri Lanka. The system automates the manual sales data analysis process, providing management with actionable insights for strategic decision-making.
+**Sampath Food City Sales Analysis System** is a comprehensive desktop application developed for **Sampath Food City (PVT) Ltd**. The system automates the manual sales data analysis process, providing management with actionable insights for strategic decision-making.
 
 > This application eliminates human bias, reduces time consumption, and provides reproducible, error-free sales analysis for better business decisions.
 
